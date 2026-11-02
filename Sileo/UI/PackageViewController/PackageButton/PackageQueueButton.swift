@@ -56,8 +56,12 @@ class PackageQueueButton: PackageButton {
                                                name: DownloadManager.lockStateChangeNotification,
                                                object: nil)
         
-        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(PackageQueueButton.longPressed(_:)))
-        self.addGestureRecognizer(longPressGesture)
+        if #available(iOS 13.0, *) {
+            addInteraction(UIContextMenuInteraction(delegate: self))
+        } else {
+            let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(PackageQueueButton.longPressed(_:)))
+            addGestureRecognizer(longPressGesture)
+        }
     }
 
     @objc func longPressed(_ gesture: UILongPressGestureRecognizer) {
@@ -81,32 +85,34 @@ class PackageQueueButton: PackageButton {
         guard let package = package, !(package.isProvisional ?? false) else {
             return
         }
-        let menu = UIAlertController(title: package.name, message: nil, preferredStyle: .actionSheet)
-
-        menu.addAction(UIAlertAction(title: String(localizationKey: "Package_Choose_Version"), style: .default) { _ in
-            self.showVersionPrompt(nil)
+        let menu = UIAlertController(title: package.name, message: nil, preferredStyle: .alert)
+        for item in longPressMenuItems(for: package) {
+            menu.addAction(UIAlertAction(title: item.title, style: .default) { _ in item.handler() })
+        }
+        menu.addAction(UIAlertAction(title: String(localizationKey: "Package_Cancel_Action"), style: .cancel, handler: nil))
+        let tintColor = self.tintColor
+        menu.view.tintColor = tintColor
+        viewControllerForPresentation?.present(menu, animated: true, completion: {
+            menu.view.tintColor = tintColor
         })
+    }
+
+    private func longPressMenuItems(for package: Package) -> [(title: String, image: String, handler: () -> Void)] {
+        var items: [(title: String, image: String, handler: () -> Void)] = [
+            (String(localizationKey: "Package_Choose_Version"), "list.bullet", { self.showVersionPrompt(nil) })
+        ]
 
         if let installed = PackageListManager.shared.installedPackage(identifier: package.package) {
             let holding = installed.wantInfo == .hold
             let title = String(localizationKey: holding ? "Package_Hold_Disable_Action" : "Package_Hold_Enable_Action")
-            menu.addAction(UIAlertAction(title: title, style: .default) { _ in
-                self.setIgnoreUpdates(!holding, installed: installed)
-            })
+            items.append((title, holding ? "hand.raised.slash" : "hand.raised", { self.setIgnoreUpdates(!holding, installed: installed) }))
         }
 
         if package.local_deb != nil || (package.filename != nil && package.sourceRepo != nil) {
-            menu.addAction(UIAlertAction(title: String(localizationKey: "Package_Download_Deb"), style: .default) { _ in
-                self.downloadDeb(package)
-            })
+            items.append((String(localizationKey: "Package_Download_Deb"), "arrow.down.to.line", { self.downloadDeb(package) }))
         }
-
-        menu.addAction(UIAlertAction(title: String(localizationKey: "Package_View_Info"), style: .default) { _ in
-            self.showPackageInfo(package)
-        })
-
-        menu.addAction(UIAlertAction(title: String(localizationKey: "Package_Cancel_Action"), style: .cancel, handler: nil))
-        presentSheet(menu)
+        items.append((String(localizationKey: "Package_View_Info"), "doc.text", { self.showPackageInfo(package) }))
+        return items
     }
 
     private func setIgnoreUpdates(_ ignore: Bool, installed: Package) {
@@ -601,6 +607,28 @@ class PackageQueueButton: PackageButton {
         } else {
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
+        }
+    }
+}
+
+@available(iOS 13.0, *)
+extension PackageQueueButton: UIContextMenuInteractionDelegate {
+    func contextMenuInteraction(
+        _ interaction: UIContextMenuInteraction,
+        configurationForMenuAtLocation location: CGPoint
+    ) -> UIContextMenuConfiguration? {
+        guard let package = package, !(package.isProvisional ?? false) else {
+            return nil
+        }
+
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
+            guard let self = self else { return nil }
+            let actions = self.longPressMenuItems(for: package).map { item in
+                UIAction(title: item.title, image: UIImage(systemName: item.image)) { _ in
+                    item.handler()
+                }
+            }
+            return UIMenu(title: package.name, children: actions)
         }
     }
 }
