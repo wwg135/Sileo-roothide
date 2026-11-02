@@ -61,7 +61,10 @@ enum RootlessConverter {
     """
 
     static func isConvertible(package: Package) -> Bool {
-        isConvertible(identifier: package.package, maintainer: package.rawControl["maintainer"])
+        guard let architecture = package.architecture,
+              [DPKGArchitecture.Architecture.rootless.rawValue, DPKGArchitecture.Architecture.rootful.rawValue].contains(architecture)
+        else { return false }
+        return isConvertible(identifier: package.package, maintainer: package.rawControl["maintainer"])
     }
 
     private static func isConvertible(identifier: String, maintainer: String?) -> Bool {
