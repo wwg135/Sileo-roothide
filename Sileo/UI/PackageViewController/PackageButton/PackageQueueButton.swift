@@ -659,7 +659,7 @@ private final class PackageVersionPickerController: UITableViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = String(localizationKey: "Select Version")
+        title = String(localizationKey: "Package_Select_Version")
         tableView.backgroundColor = .sileoBackgroundColor
         tableView.separatorColor = .sileoSeparatorColor
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Version")
