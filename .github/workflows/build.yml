@@ -1,0 +1,138 @@
+name: Build Sileo (roothide)
+
+on:
+  push:
+    branches: ["dev"]
+    paths-ignore:
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sileo-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  HOMEBREW_NO_AUTO_UPDATE: "1"
+  HOMEBREW_NO_INSTALL_CLEANUP: "1"
+  HOMEBREW_NO_ANALYTICS: "1"
+
+jobs:
+  build:
+    name: Build iphoneos-arm64 and iphoneos-arm64e
+    runs-on: macos-15
+    timeout-minutes: 90
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Select Xcode
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcode="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1 || true)"
+          if [ -n "$xcode" ]; then
+            sudo xcode-select -s "$xcode/Contents/Developer"
+          fi
+          xcodebuild -version
+          echo "iPhoneOS SDK $(xcrun --sdk iphoneos --show-sdk-version)"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          formulae=()
+          command -v dpkg-deb >/dev/null 2>&1 || formulae+=(dpkg)
+          command -v ldid >/dev/null 2>&1 || formulae+=(ldid)
+          if (( ${#formulae[@]} > 0 )); then
+            brew install "${formulae[@]}"
+          fi
+          dpkg-deb --version | head -1
+          ldid 2>&1 | head -1 || true
+
+      - name: Build iphoneos-arm64 (rootless)
+        shell: bash
+        run: |
+          set -euo pipefail
+          make clean package DEBUG=0 ALL_BOOTSTRAPS=1 SILEO_PLATFORM=iphoneos-arm64
+          mkdir -p out
+          cp packages/*.deb out/
+
+      - name: Build iphoneos-arm64e (roothide)
+        shell: bash
+        run: |
+          set -euo pipefail
+          make clean package DEBUG=0 ALL_BOOTSTRAPS=1 SILEO_PLATFORM=iphoneos-arm64e
+          cp packages/*.deb out/
+
+      - name: Verify packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd out
+          for arch in iphoneos-arm64 iphoneos-arm64e; do
+            deb="$(ls ./*_"$arch".deb)"
+            test "$(dpkg-deb -f "$deb" Architecture)" = "$arch"
+            echo "$deb: $(dpkg-deb -f "$deb" Package) $(dpkg-deb -f "$deb" Version) [$arch]"
+          done
+          shasum -a 256 ./*.deb > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: sileo-roothide
+          path: |
+            out/*.deb
+            out/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 30
+
+  deploy:
+    name: Push deb packages to repo
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: sileo-roothide
+          path: debs
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          repository: wwg135/wwg135.github.io
+          token: ${{ secrets.DEPLOY_PAT }}
+          path: website
+
+      - name: Copy deb
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p website/debs
+          # keep only the newest Sileo build in the repo
+          rm -f website/debs/org.coolstar.sileo_*.deb
+          cp debs/*.deb website/debs/
+          ls -la website/debs/ | grep -i sileo
+
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd website
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A debs/
+          if git diff --staged --quiet; then
+            echo "No changes to deploy."
+          else
+            git commit -m "chore: update Sileo-roothide debs (${{ github.sha }})"
+            git push
+          fi
