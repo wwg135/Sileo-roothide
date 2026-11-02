@@ -22,7 +22,7 @@ env:
 jobs:
   build:
     name: Build iphoneos-arm64 and iphoneos-arm64e
-    runs-on: macos-15
+    runs-on: xcode-27
     timeout-minutes: 90
 
     steps:
@@ -32,14 +32,9 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      - name: Select Xcode
-        shell: bash
+      - name: Select Xcode 27.1
         run: |
-          set -euo pipefail
-          xcode="$(ls -d /Applications/Xcode_26*.app 2>/dev/null | sort -V | tail -n 1 || true)"
-          if [ -n "$xcode" ]; then
-            sudo xcode-select -s "$xcode/Contents/Developer"
-          fi
+          sudo xcode-select -s /Applications/Xcode_27.1.app/Contents/Developer
           xcodebuild -version
           echo "iPhoneOS SDK $(xcrun --sdk iphoneos --show-sdk-version)"
 
