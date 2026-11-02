@@ -13,6 +13,7 @@ protocol PackageQueueButtonDataProvider: AnyObject {
 }
 
 class PackageQueueButton: PackageButton {
+    private var contextMenuDelegate: AnyObject?
     
     static let actionPerformedNotification = Notification.Name("actionPerformedNotification")
 
@@ -57,7 +58,9 @@ class PackageQueueButton: PackageButton {
                                                object: nil)
         
         if #available(iOS 13.0, *) {
-            addInteraction(UIContextMenuInteraction(delegate: self))
+            let menuDelegate = PackageQueueMenuDelegate(button: self)
+            contextMenuDelegate = menuDelegate
+            addInteraction(UIContextMenuInteraction(delegate: menuDelegate))
         } else {
             let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(PackageQueueButton.longPressed(_:)))
             addGestureRecognizer(longPressGesture)
@@ -97,7 +100,7 @@ class PackageQueueButton: PackageButton {
         })
     }
 
-    private func longPressMenuItems(for package: Package) -> [(title: String, image: String, handler: () -> Void)] {
+    fileprivate func longPressMenuItems(for package: Package) -> [(title: String, image: String, handler: () -> Void)] {
         var items: [(title: String, image: String, handler: () -> Void)] = [
             (String(localizationKey: "Package_Choose_Version"), "list.bullet", { self.showVersionPrompt(nil) })
         ]
@@ -600,18 +603,24 @@ class PackageQueueButton: PackageButton {
 }
 
 @available(iOS 13.0, *)
-extension PackageQueueButton: UIContextMenuInteractionDelegate {
+private final class PackageQueueMenuDelegate: NSObject, UIContextMenuInteractionDelegate {
+    private weak var button: PackageQueueButton?
+
+    init(button: PackageQueueButton) {
+        self.button = button
+    }
+
     func contextMenuInteraction(
         _ interaction: UIContextMenuInteraction,
         configurationForMenuAtLocation location: CGPoint
     ) -> UIContextMenuConfiguration? {
-        guard let package = package, !(package.isProvisional ?? false) else {
+        guard let button = button, let package = button.package, !(package.isProvisional ?? false) else {
             return nil
         }
 
-        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
-            guard let self = self else { return nil }
-            let actions = self.longPressMenuItems(for: package).map { item in
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak button] _ in
+            guard let button = button else { return nil }
+            let actions = button.longPressMenuItems(for: package).map { item in
                 UIAction(title: item.title, image: UIImage(systemName: item.image)) { _ in
                     item.handler()
                 }
