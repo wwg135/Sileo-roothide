@@ -161,46 +161,32 @@ class PackageQueueButton: PackageButton {
         guard let package = package, !(package.isProvisional ?? false) else {
             return
         }
-        let versionPrompt = UIAlertController(title: String(localizationKey: "Select Version"),
-                                                message: String(localizationKey: "Select the version of the package to install"),
-                                                preferredStyle: .actionSheet)
-        
-        var allPackages: [Package] = []
-        
-        if package.fromStatusFile {
-            for repo in RepoManager.shared.repoList {
-                allPackages += repo.allVersions(identifier: package.package, ignoreArch: true)
+        var repos = RepoManager.shared.repoList
+        if let sourceRepo = package.sourceRepo, !repos.contains(sourceRepo) {
+            repos.append(sourceRepo)
+        }
+        let sections = repos
+            .map { repo in
+                (
+                    title: repo.displayName,
+                    packages: repo.allVersions(identifier: package.package, ignoreArch: true)
+                        .sorted { DpkgWrapper.isVersion($0.version, greaterThan: $1.version) }
+                )
             }
-            allPackages = PackageListManager.shared.sortPackages(packages: allPackages, search: nil)
-        } else {
-            allPackages = package.allVersions(ignoreArch: true).sorted(by: { obj1, obj2 -> Bool in
-                if DpkgWrapper.isVersion(obj1.version, greaterThan: obj2.version) {
-                    return true
-                }
-                return false
-            })
-        }
+            .filter { !$0.packages.isEmpty }
+            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
 
-        let installedVersion = PackageListManager.shared.installedPackage(identifier: package.package)?.version
-        var versioncount=0
-        for versionPackage in allPackages {
-            var title = package.fromStatusFile ? "\t\(versionPackage.version) • \(versionPackage.sourceRepo!.displayName)" : versionPackage.version
-            if let arch = versionPackage.architecture { title += " • \(arch)" }
-            if versionPackage.version == installedVersion { title += " ✓" }
-            let versionAction = UIAlertAction(title: title, style: .default, handler: { (_: UIAlertAction) in
-                self.requestQueuePackage(package: versionPackage, queue: .installations)
-            })
-            if package.fromStatusFile { versionAction.setValue(CATextLayerAlignmentMode.left, forKey: "titleTextAlignment") }
-            if !checkRootHide(versionPackage) { versionAction.setValue(UIColor.gray, forKey: "titleTextColor") }
-            versionPrompt.addAction(versionAction)
-            versioncount += 1
+        guard !sections.isEmpty else { return }
+        let picker = PackageVersionPickerController(sections: sections) { [weak self] selected in
+            self?.requestQueuePackage(package: selected, queue: .installations)
         }
-        
-        if versioncount==0 { return }
-
-        let cancelAction = UIAlertAction(title: String(localizationKey: "Package_Cancel_Action"), style: .cancel, handler: nil)
-        versionPrompt.addAction(cancelAction)
-        presentSheet(versionPrompt)
+        let navigationController = UINavigationController(rootViewController: picker)
+        navigationController.modalPresentationStyle = .pageSheet
+        if #available(iOS 15.0, *), let sheet = navigationController.sheetPresentationController {
+            sheet.detents = [.medium(), .large()]
+            sheet.prefersGrabberVisible = true
+        }
+        viewControllerForPresentation?.present(navigationController, animated: true)
     }
     
     func checkQueued(package: Package) -> Bool
@@ -630,6 +616,67 @@ extension PackageQueueButton: UIContextMenuInteractionDelegate {
             }
             return UIMenu(title: package.name, children: actions)
         }
+    }
+}
+
+private final class PackageVersionPickerController: UITableViewController {
+    private let sections: [(title: String, packages: [Package])]
+    private let onPick: (Package) -> Void
+
+    init(sections: [(title: String, packages: [Package])], onPick: @escaping (Package) -> Void) {
+        self.sections = sections
+        self.onPick = onPick
+        super.init(style: .grouped)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = String(localizationKey: "Select Version")
+        tableView.backgroundColor = .sileoBackgroundColor
+        tableView.separatorColor = .sileoSeparatorColor
+        tableView.register(UITableViewCell.self, forCellReuseIdentifier: "Version")
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            title: String(localizationKey: "Package_Cancel_Action"),
+            style: .plain,
+            target: self,
+            action: #selector(cancel)
+        )
+    }
+
+    override func numberOfSections(in tableView: UITableView) -> Int {
+        sections.count
+    }
+
+    override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        sections[section].packages.count
+    }
+
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        sections[section].title
+    }
+
+    override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "Version", for: indexPath)
+        let package = sections[indexPath.section].packages[indexPath.row]
+        cell.textLabel?.text = package.version
+        cell.backgroundColor = .clear
+        return cell
+    }
+
+    override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        tableView.deselectRow(at: indexPath, animated: true)
+        let package = sections[indexPath.section].packages[indexPath.row]
+        dismiss(animated: true) { [weak self] in
+            self?.onPick(package)
+        }
+    }
+
+    @objc private func cancel() {
+        dismiss(animated: true)
     }
 }
 

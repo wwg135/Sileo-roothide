@@ -62,8 +62,8 @@
 "Package_Share_Action" = "分享插件包…";
 "Package_Developer_Find_Action" = "更多这位开发者的作品";
 "Package_Support_Action" = "支持";
-"Package_Hold_Enable_Action" = "忽略未来的更新";
-"Package_Hold_Disable_Action" = "取消忽略更新";
+"Package_Hold_Enable_Action" = "屏蔽更新";
+"Package_Hold_Disable_Action" = "取消屏蔽更新";
 "Package_Wishlist_Add" = "添加到愿望清单";
 "Package_Wishlist_Remove" = "从愿望清单中删除";
 "Wishlist" = "愿望清单";
