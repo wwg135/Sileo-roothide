@@ -199,6 +199,18 @@ enum RootlessConverter {
             let mirror = rootfs(root.appendingPathComponent(mirrorRelativePath).path)
             try run(CommandPath.chown, ["chown", "-R", "501:501", mirror], root: true)
             try run(CommandPath.chmod, ["chmod", "-R", "0755", mirror], root: true)
+            // directories made up here for the mirror belong to mobile, as tar leaves them in
+            // patch.sh; dpkg would otherwise hand the device's own /var/mobile to root
+            let known = Set(originalMetadata.compactMap { relocatedPath(for: $0.relativePath, mode: mode) })
+            var madeUp: [String] = []
+            for directory in ["var", "var/mobile", "var/mobile/Library"] where !known.contains(directory) {
+                let path = root.appendingPathComponent(directory).path
+                if fm.fileExists(atPath: path) { madeUp.append(rootfs(path)) }
+            }
+            if !madeUp.isEmpty {
+                try run(CommandPath.chown, ["chown", "501:501"] + madeUp, root: true)
+                try run(CommandPath.chmod, ["chmod", "0755"] + madeUp, root: true)
+            }
         }
 
         try run(CommandPath.dpkgdeb, ["dpkg-deb", "-Zzstd", "-b", rootfs(root.path), rootfs(output.path)], root: true)
@@ -426,12 +438,27 @@ enum RootlessConverter {
 
         let directory = (relative as NSString).deletingLastPathComponent
         var text = String(decoding: xml, as: UTF8.self)
-        if directory == "Library/LaunchDaemons" {
-            text = text.replacingOccurrences(of: "/var/jb/", with: "/")
-        } else if directory == "Library/libSandy" {
-            text = convertSandyProfile(text)
+        switch plistRule(forDirectory: directory) {
+        case .daemon: text = text.replacingOccurrences(of: "/var/jb/", with: "/")
+        case .sandbox: text = convertSandyProfile(text)
+        case nil: break
         }
         try? Data(text.utf8).write(to: url)
+    }
+
+    private enum PlistRule { case daemon, sandbox }
+
+    /// patch.sh matches the directory (with its leading `/`) as an unanchored
+    /// pattern against `{/Library/LaunchDaemons}`, then `{/Library/libSandy}`, so a
+    /// plist directly in `/Library` or at the root is treated as a daemon's too.
+    private static func plistRule(forDirectory directory: String) -> PlistRule? {
+        let path = "/" + directory
+        guard path.utf8.allSatisfy({ $0 < 0x80 }) else { return nil }
+        var pattern = regex_t()
+        guard regcomp(&pattern, path, REG_EXTENDED | REG_NOSUB) == 0 else { return nil }
+        defer { regfree(&pattern) }
+        func matches(_ text: String) -> Bool { regexec(&pattern, text, 0, nil, 0) == 0 }
+        return matches("{/Library/LaunchDaemons}") ? .daemon : matches("{/Library/libSandy}") ? .sandbox : nil
     }
 
     // MARK: - Text conversion
