@@ -256,3 +256,4 @@
 "Package_Choose_Version" = "Choose Version…";
 "Package_Download_Deb" = "Download Package File";
 "Package_View_Info" = "View Package Info";
+"Package_Downloading" = "Downloading…";

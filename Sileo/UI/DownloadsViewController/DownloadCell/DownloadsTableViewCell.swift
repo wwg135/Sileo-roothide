@@ -178,6 +178,7 @@ class DownloadsTableViewCell: BaseSubtitleTableViewCell {
         super.init(style: .subtitle, reuseIdentifier: reuseIdentifier)
         
         self.selectionStyle = .none
+        self.progressView.showsPercentage = true
         self.detailTextLabel?.adjustsFontSizeToFitWidth = true
         
         self.contentView.addSubview(retryButton)

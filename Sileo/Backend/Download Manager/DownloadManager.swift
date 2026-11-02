@@ -940,10 +940,43 @@ final class DownloadManager {
     }
     
     // call in main queue
-    func downloadDeb(package: Package, msg: String, handler: @escaping ((Package,URL) -> Void)) {
+    func downloadDeb(package: Package, msg: String, showsProgress: Bool = false, handler: @escaping ((Package,URL) -> Void)) {
         var task:EvanderDownloader?
         
-        let alert = UIAlertController(title: msg, message: msg, preferredStyle: .alert)
+        let alert = UIAlertController(title: msg, message: showsProgress ? "\n\n\n\n" : msg, preferredStyle: .alert)
+        let progressView = UIProgressView(progressViewStyle: .default)
+        let percentLabel = UILabel()
+        var percentLeading: NSLayoutConstraint?
+        if showsProgress {
+            progressView.translatesAutoresizingMaskIntoConstraints = false
+            percentLabel.translatesAutoresizingMaskIntoConstraints = false
+            percentLabel.font = UIFont.monospacedDigitSystemFont(ofSize: 13, weight: .medium)
+            percentLabel.textAlignment = .center
+            percentLabel.text = "0%"
+            alert.view.addSubview(progressView)
+            alert.view.addSubview(percentLabel)
+            let leading = percentLabel.leadingAnchor.constraint(equalTo: progressView.leadingAnchor)
+            percentLeading = leading
+            NSLayoutConstraint.activate([
+                progressView.leadingAnchor.constraint(equalTo: alert.view.leadingAnchor, constant: 24),
+                progressView.trailingAnchor.constraint(equalTo: alert.view.trailingAnchor, constant: -24),
+                progressView.bottomAnchor.constraint(equalTo: alert.view.bottomAnchor, constant: -66),
+                percentLabel.bottomAnchor.constraint(equalTo: progressView.topAnchor, constant: -6),
+                percentLabel.widthAnchor.constraint(equalToConstant: 48),
+                leading
+            ])
+        }
+        
+        func updateProgress(_ fraction: Double) {
+            DispatchQueue.main.async {
+                let value = max(0, min(1, fraction))
+                progressView.setProgress(Float(value), animated: true)
+                percentLabel.text = "\(Int(value * 100))%"
+                let travel = max(0, progressView.bounds.width - 48)
+                percentLeading?.constant = CGFloat(value) * travel
+                UIView.animate(withDuration: 0.15) { alert.view.layoutIfNeeded() }
+            }
+        }
         
         let cancel = UIAlertAction(title: String(localizationKey: "Cancel"), style: .cancel) { _ in
             alert.dismiss(animated: true, completion: nil)
@@ -958,6 +991,16 @@ final class DownloadManager {
             DispatchQueue.main.async {
                 alert.message = "\n \(msg) \n"
             }
+        }
+        
+        func updateMsg(msg: String, isError: Bool) {
+            if isError {
+                DispatchQueue.main.async {
+                    progressView.isHidden = true
+                    percentLabel.isHidden = true
+                }
+            }
+            updateMsg(msg: msg)
         }
         
         func finishDownload(fileURL: URL) {
@@ -987,12 +1030,18 @@ final class DownloadManager {
         // See if theres an overriding web URL for downloading the package from
         self.overrideDownloadURL(package: package, repo: repo) { errorMessage, overrideURL in
             if overrideURL == nil && errorMessage != nil {
-                updateMsg(msg: "\(errorMessage)")
+                updateMsg(msg: "\(errorMessage)", isError: true)
                 return
             }
             let downloadURL = overrideURL ?? URL(string: packageURL)
             NSLog("SileoLog: downloadURL=\(downloadURL)")
             task = RepoManager.shared.queue(from: downloadURL, progress: { task, progress in
+                if showsProgress {
+                    if progress.expected != NSURLSessionTransferSizeUnknown {
+                        updateProgress(progress.fractionCompleted)
+                    }
+                    return
+                }
                 var msg:String
                 if progress.expected==NSURLSessionTransferSizeUnknown {
                     msg = "\(progress.total) bytes ..."
@@ -1009,7 +1058,7 @@ final class DownloadManager {
                 if package.local_deb==nil && (fileSizeStr != package.size) {
                     let failureReason = String(format: String(localizationKey: "Download_Size_Mismatch", type: .error),
                                                package.size ?? "nil", fileSizeStr)
-                    updateMsg(msg: "\(failureReason)")
+                    updateMsg(msg: "\(failureReason)", isError: true)
                 } else {
                     finishDownload(fileURL: fileURL)
                 }
@@ -1017,7 +1066,7 @@ final class DownloadManager {
             }, failure: { task, statusCode, error in
                 let failureReason = error?.localizedDescription ?? String(format: String(localizationKey: "Download_Failing_Status_Code", type: .error), statusCode)
                 
-                updateMsg(msg: "\(failureReason)")
+                updateMsg(msg: "\(failureReason)", isError: true)
                 
             }, waiting: { task, message in
                 updateMsg(msg: "\(message)")

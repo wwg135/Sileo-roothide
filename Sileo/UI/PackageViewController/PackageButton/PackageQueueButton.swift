@@ -131,7 +131,7 @@ class PackageQueueButton: PackageButton {
     }
 
     private func downloadDeb(_ package: Package) {
-        DownloadManager.shared.downloadDeb(package: package, msg: String(localizationKey: "Loading")) { package, fileURL in
+        DownloadManager.shared.downloadDeb(package: package, msg: String(localizationKey: "Package_Downloading"), showsProgress: true) { package, fileURL in
             let name = "\(package.package)_\(package.version)_\(package.architecture ?? "unknown").deb"
             let shared = FileManager.default.temporaryDirectory.appendingPathComponent(name)
             try? FileManager.default.removeItem(at: shared)

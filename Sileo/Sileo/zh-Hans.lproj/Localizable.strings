@@ -255,3 +255,4 @@
 "Package_Choose_Version" = "选择版本…";
 "Package_Download_Deb" = "下载安装包";
 "Package_View_Info" = "查看插件包信息";
+"Package_Downloading" = "正在下载…";
