@@ -784,34 +784,50 @@ final class DownloadManager {
         }
     }
     
-    private func patchPackage(package: Package, fileURL: URL) {
-            let packageID = self.aptEncoded(string: package.package, isArch: false)
-            let version = self.aptEncoded(string: package.version, isArch: false)
-            let architecture = self.aptEncoded(string: package.architecture ?? "", isArch: true)
-            
-            let extractionPath = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
-            try! FileManager.default.createDirectory(at: extractionPath, withIntermediateDirectories: false, attributes: nil)
-            
-            let destFileName = "/\(extractionPath.path)/\(packageID)_\(version)_\(architecture).deb"
-            let destURL = URL(fileURLWithPath: destFileName)
-            NSLog("SileoLog: destURL=\(destURL.path)")
-            try! FileManager.default.moveItem(at: fileURL, to: destURL)
+    private static let compatModeKey = "CompatibilityMode"
+    
+    // Converts a rootless/rootful package to roothide in-process, then queues the result for installation
+    private func convertPackage(package: Package, fileURL: URL) {
+        let alert = UIAlertController(title: String(localizationKey: "Compat_Converting"), message: "\n \(package.name ?? package.package) \n", preferredStyle: .alert)
+        SileoAppDelegate.presentController(alert)
         
-            if IsAppAvailable("com.roothide.patcher") {
-                if ShareFileToApp("com.roothide.patcher", destFileName) {
-                    return
+        DispatchQueue.global(qos: .userInitiated).async {
+            let output = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).deb")
+            do {
+                try RootlessConverter.convert(deb: fileURL, to: output)
+            } catch {
+                NSLog("SileoLog: convertPackage failed \(error)")
+                DispatchQueue.main.async {
+                    alert.dismiss(animated: true) {
+                        self.showConvertFailure(package: package, message: error.localizedDescription)
+                    }
+                }
+                return
+            }
+            
+            if package.local_deb == nil {
+                try? FileManager.default.removeItem(at: fileURL)
+            }
+            
+            DispatchQueue.main.async {
+                alert.dismiss(animated: true) {
+                    guard let newPackage = PackageListManager.shared.package(url: output), checkRootHide(newPackage) else {
+                        self.showConvertFailure(package: package, message: String(localizationKey: "Compat_Convert_Failed"))
+                        return
+                    }
+                    newPackage.origArchitecture = package.architecture
+                    self.add(package: newPackage, queue: .installations) {
+                        self.reloadData(recheckPackages: true)
+                    }
                 }
             }
+        }
+    }
     
-            let activity = UIActivityViewController(activityItems: [destURL], applicationActivities: nil)
-            
-            //for ipad, don't touch
-            let sv = TabBarController.singleton!.view!
-            activity.popoverPresentationController?.sourceView = sv
-            activity.popoverPresentationController?.sourceRect = CGRect(x: sv.bounds.midX, y: sv.bounds.height, width: 0, height: 0)
-            activity.popoverPresentationController?.permittedArrowDirections = UIPopoverArrowDirection.down
-            
-            SileoAppDelegate.presentController(activity)
+    private func showConvertFailure(package: Package, message: String) {
+        let alert = UIAlertController(title: String(localizationKey: "Compat_Convert_Failed"), message: "\(package.package)(\(package.version))\n\n\(message)", preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: String(localizationKey: "OK"), style: .cancel))
+        SileoAppDelegate.presentController(alert)
     }
     
     // call in main queue
@@ -930,31 +946,26 @@ final class DownloadManager {
                     NSLog("SileoLog: not updated for roothide: \(package.package) \(package.architecture)")
                     
                     let IncompatibleRepo = ["apt.procurs.us","ellekit.space"].contains(package.sourceRepo?.url?.host)
+                    let compatMode = UserDefaults.standard.bool(forKey: DownloadManager.compatModeKey, fallback: true)
+                    let convertible = !IncompatibleRepo && RootlessConverter.isConvertible(package: package)
+                    
+                    if compatMode && convertible {
+                        self.downloadDeb(package: package, msg: String(localizationKey: "Downloading_Package_Status"), handler: self.convertPackage)
+                        return
+                    }
                     
                     let title = String(localizationKey: "Not Updated")
-                    
-                    let msg = IncompatibleRepo ? String(localizationKey: "please contact @roothideDev to update it") : String(localizationKey: "\(package.package)(\(package.version))\n\nYou can contact the developer of this package to update it for roothide, or you can try to convert it via roothide Patcher.")
+                    let name = "\(package.package)(\(package.version))"
+                    let msg: String
+                    if IncompatibleRepo {
+                        msg = String(localizationKey: "please contact @roothideDev to update it")
+                    } else if !convertible {
+                        msg = String(format: String(localizationKey: "Compat_Not_Updated_Message"), name)
+                    } else {
+                        msg = String(format: String(localizationKey: "Compat_Disabled_Message"), name)
+                    }
                     
                     let alert = UIAlertController(title: title, message: msg, preferredStyle: .alert)
-                    
-                    let installedPatcher = PackageListManager.shared.installedPackage(identifier: "com.roothide.patcher") != nil
-                    
-                    let patchAction = UIAlertAction(title: String(localizationKey: installedPatcher ? "Convert" : "Get Patcher"), style: .destructive) { _ in
-                        alert.dismiss(animated: true, completion: {
-                            var presentModally = false
-                            if installedPatcher {
-                                self.downloadDeb(package:package, msg: String(localizationKey: "Downloading_Package_Status"), handler: self.patchPackage)
-                            }
-                            else if let packageview = URLManager.viewController(url: URL(string: "sileo://package/com.roothide.patcher"), isExternalOpen: true, presentModally: &presentModally) {
-                                
-                                SileoAppDelegate.presentController(packageview)
-                            }
-                        })
-                    }
-                    
-                    if !IncompatibleRepo {
-                        alert.addAction(patchAction)
-                    }
                     
                     let okAction = UIAlertAction(title: (package.sourceRepo?.url?.host == "apt.procurs.us") ? String(localizationKey: "OK") : String(localizationKey: "Cancel"), style: .cancel) { _ in
                         alert.dismiss(animated: true, completion: nil)

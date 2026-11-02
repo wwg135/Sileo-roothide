@@ -243,3 +243,11 @@
 "Whats_Collected" = "What's Collected";
 "Non_Identifying" = "Only package and non-identifying device information is collected.";
 "Privacy_Policy" = "Privacy Policy";
+"Compatibility_Mode_Update" = "兼容模式更新";
+"Compat_Converting" = "正在转换…";
+"Compat_Convert_Failed" = "转换失败";
+"Compat_Not_Convertible" = "此软件包无法自动转换。\n\n请联系开发者适配 roothide。";
+"Compat_Disabled_Message" = "%@\n\n此软件包尚未适配 roothide。你可以联系开发者，或在设置中开启“兼容模式更新”以自动转换。";
+"Compat_Unsupported_Arch" = "不支持转换 %@ 架构的软件包。";
+"Compat_Tool_Missing" = "缺少所需工具“%@”，请先安装。";
+"Compat_Not_Updated_Message" = "%@\n\n此软件包尚未适配 roothide，且无法自动转换，请联系开发者。";

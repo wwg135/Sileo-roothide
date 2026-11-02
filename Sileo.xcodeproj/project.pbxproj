@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1C0DE0000000000000000B2 /* MachOPatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000B1 /* MachOPatcher.swift */; };
+		A1C0DE0000000000000000B3 /* MachOPatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000B1 /* MachOPatcher.swift */; };
+		A1C0DE0000000000000000B4 /* MachOPatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000B1 /* MachOPatcher.swift */; };
+		A1C0DE0000000000000000A2 /* RootlessConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000A1 /* RootlessConverter.swift */; };
+		A1C0DE0000000000000000A3 /* RootlessConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000A1 /* RootlessConverter.swift */; };
+		A1C0DE0000000000000000A4 /* RootlessConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000A1 /* RootlessConverter.swift */; };
 		1716FD7321D5354100124AD2 /* FlaggedSourceWarningViewController.xib in Resources */ = {isa = PBXBuildFile; fileRef = 1716FD7221D5354100124AD2 /* FlaggedSourceWarningViewController.xib */; };
 		172B2ED122F08B21000155B9 /* SourceLicense.swift in Sources */ = {isa = PBXBuildFile; fileRef = 172B2ED022F08B21000155B9 /* SourceLicense.swift */; };
 		172B2ED322F08D31000155B9 /* LicenseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 172B2ED222F08D31000155B9 /* LicenseViewController.swift */; };
@@ -1135,6 +1141,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A1C0DE0000000000000000B1 /* MachOPatcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MachOPatcher.swift; sourceTree = "<group>"; };
+		A1C0DE0000000000000000A1 /* RootlessConverter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RootlessConverter.swift; sourceTree = "<group>"; };
 		1716FD7221D5354100124AD2 /* FlaggedSourceWarningViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = FlaggedSourceWarningViewController.xib; sourceTree = "<group>"; };
 		172B2ED022F08B21000155B9 /* SourceLicense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceLicense.swift; sourceTree = "<group>"; };
 		172B2ED222F08D31000155B9 /* LicenseViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LicenseViewController.swift; sourceTree = "<group>"; };
@@ -2757,6 +2765,8 @@
 			isa = PBXGroup;
 			children = (
 				E1EB0367268BA4B00097CEE1 /* DownloadManager.swift */,
+				A1C0DE0000000000000000B1 /* MachOPatcher.swift */,
+				A1C0DE0000000000000000A1 /* RootlessConverter.swift */,
 				F1705FED24CA15A2001596A0 /* DownloadOverrideProviding.swift */,
 			);
 			path = "Download Manager";
@@ -4088,6 +4098,8 @@
 				E128186226BBFAA500D2553B /* DepictionVideoView.swift in Sources */,
 				E128186326BBFAA500D2553B /* DepictionWebView.swift in Sources */,
 				E128186426BBFAA500D2553B /* DownloadManager.swift in Sources */,
+				A1C0DE0000000000000000B2 /* MachOPatcher.swift in Sources */,
+				A1C0DE0000000000000000A2 /* RootlessConverter.swift in Sources */,
 				E128186526BBFAA500D2553B /* Download.swift in Sources */,
 				E128186626BBFAA500D2553B /* PaymentPackageInfo.swift in Sources */,
 				E128186726BBFAA500D2553B /* CSTextView.swift in Sources */,
@@ -4295,6 +4307,8 @@
 				F139D0E722EA9209007F5C0D /* DepictionTabView.swift in Sources */,
 				E14E4D6426DED58F002AE3B4 /* NativePackageViewController.swift in Sources */,
 				E1EB0369268BA4B00097CEE1 /* DownloadManager.swift in Sources */,
+				A1C0DE0000000000000000B4 /* MachOPatcher.swift in Sources */,
+				A1C0DE0000000000000000A4 /* RootlessConverter.swift in Sources */,
 				F139D0C922EA9209007F5C0D /* DepictionTableButtonView.swift in Sources */,
 				E13488F429CC923F00B0A8D5 /* PackageProtocol.swift in Sources */,
 				F139D0B422EA9209007F5C0D /* DepictionTableTextView.swift in Sources */,
@@ -4483,6 +4497,8 @@
 				F1C5D9ED22D1ABDC0021BD89 /* DepictionVideoView.swift in Sources */,
 				F1C5D9EA22D1A9270021BD89 /* DepictionWebView.swift in Sources */,
 				E1EB0368268BA4B00097CEE1 /* DownloadManager.swift in Sources */,
+				A1C0DE0000000000000000B3 /* MachOPatcher.swift in Sources */,
+				A1C0DE0000000000000000A3 /* RootlessConverter.swift in Sources */,
 				F13AEE5B22F62B9D004BAA05 /* Download.swift in Sources */,
 				FB6F3D3424AA68A900E941F8 /* PaymentPackageInfo.swift in Sources */,
 				F14F7D5C240A7E7800062310 /* CSTextView.swift in Sources */,
