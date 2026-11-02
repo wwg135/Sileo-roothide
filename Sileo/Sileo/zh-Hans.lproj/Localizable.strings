@@ -54,7 +54,7 @@
 "Package_Reinstall_Action" = "重新安装";
 "Package_Uninstall_Action" = "卸载";
 "Package_Modify_Action" = "更改";
-"Package_Get_Action" = "下载";
+"Package_Get_Action" = "安装";
 "Package_Queue_Action" = "队列";
 "Package_Cancel_Action" = "取消";
 "Package_Paid" = "付费";
