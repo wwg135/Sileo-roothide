@@ -219,12 +219,6 @@ enum RootlessConverter {
         try run(CommandPath.dpkgdeb, ["dpkg-deb", "-Zzstd", "-b", rootfs(root.path), rootfs(output.path)], root: true)
         try run(CommandPath.chown, ["chown", owner, rootfs(output.path)], root: true)
 
-        // TEMPORARY (debugging safe mode): keep a copy of every converted deb; remove once fixed
-        let keepDir = "/var/mobile/ConvertedDebs"
-        let keepName = "\(identifier)_\(Int(Date().timeIntervalSince1970)).deb"
-        _ = try? run(CommandPath.mkdir, ["mkdir", "-p", rootfs(keepDir)], root: true)
-        _ = try? run(CommandPath.cp, ["cp", rootfs(output.path), rootfs(keepDir + "/" + keepName)], root: true)
-        _ = try? run(CommandPath.chmod, ["chmod", "-R", "0777", rootfs(keepDir)], root: true)
     }
 
     // MARK: - Layout
