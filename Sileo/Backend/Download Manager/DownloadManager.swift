@@ -940,7 +940,7 @@ final class DownloadManager {
     }
     
     // call in main queue
-    private func downloadDeb(package: Package, msg: String, handler: @escaping ((Package,URL) -> Void)) {
+    func downloadDeb(package: Package, msg: String, handler: @escaping ((Package,URL) -> Void)) {
         var task:EvanderDownloader?
         
         let alert = UIAlertController(title: msg, message: msg, preferredStyle: .alert)

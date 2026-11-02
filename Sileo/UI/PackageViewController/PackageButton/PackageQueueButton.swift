@@ -56,8 +56,99 @@ class PackageQueueButton: PackageButton {
                                                name: DownloadManager.lockStateChangeNotification,
                                                object: nil)
         
-        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(PackageQueueButton.showVersionPrompt(_:)))
+        let longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(PackageQueueButton.longPressed(_:)))
         self.addGestureRecognizer(longPressGesture)
+    }
+
+    @objc func longPressed(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began else { return }
+        showLongPressMenu()
+    }
+
+    private func presentSheet(_ sheet: UIAlertController) {
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            sheet.popoverPresentationController?.sourceView = self
+            sheet.popoverPresentationController?.sourceRect = self.bounds
+        }
+        let tintColor = self.tintColor
+        sheet.view.tintColor = tintColor
+        viewControllerForPresentation?.present(sheet, animated: true, completion: {
+            sheet.view.tintColor = tintColor
+        })
+    }
+
+    private func showLongPressMenu() {
+        guard let package = package, !(package.isProvisional ?? false) else {
+            return
+        }
+        let menu = UIAlertController(title: package.name, message: nil, preferredStyle: .actionSheet)
+
+        menu.addAction(UIAlertAction(title: String(localizationKey: "Package_Choose_Version"), style: .default) { _ in
+            self.showVersionPrompt(nil)
+        })
+
+        if let installed = PackageListManager.shared.installedPackage(identifier: package.package) {
+            let holding = installed.wantInfo == .hold
+            let title = String(localizationKey: holding ? "Package_Hold_Disable_Action" : "Package_Hold_Enable_Action")
+            menu.addAction(UIAlertAction(title: title, style: .default) { _ in
+                self.setIgnoreUpdates(!holding, installed: installed)
+            })
+        }
+
+        if package.local_deb != nil || (package.filename != nil && package.sourceRepo != nil) {
+            menu.addAction(UIAlertAction(title: String(localizationKey: "Package_Download_Deb"), style: .default) { _ in
+                self.downloadDeb(package)
+            })
+        }
+
+        menu.addAction(UIAlertAction(title: String(localizationKey: "Package_View_Info"), style: .default) { _ in
+            self.showPackageInfo(package)
+        })
+
+        menu.addAction(UIAlertAction(title: String(localizationKey: "Package_Cancel_Action"), style: .cancel, handler: nil))
+        presentSheet(menu)
+    }
+
+    private func setIgnoreUpdates(_ ignore: Bool, installed: Package) {
+        #if !targetEnvironment(simulator) && !TARGET_SIMULATOR
+        do {
+            try DpkgWrapper.ignoreUpdates(ignore, package: installed.package)
+            installed.wantInfo = ignore ? .hold : .install
+        } catch {
+            let alert = UIAlertController(title: String(localizationKey: "Unknown", type: .error), message: "\(error)", preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: String(localizationKey: "OK"), style: .cancel, handler: nil))
+            viewControllerForPresentation?.present(alert, animated: true, completion: nil)
+            return
+        }
+        #endif
+        NotificationCenter.default.post(Notification(name: PackageListManager.prefsNotification))
+    }
+
+    private func downloadDeb(_ package: Package) {
+        DownloadManager.shared.downloadDeb(package: package, msg: String(localizationKey: "Loading")) { package, fileURL in
+            let name = "\(package.package)_\(package.version)_\(package.architecture ?? "unknown").deb"
+            let shared = FileManager.default.temporaryDirectory.appendingPathComponent(name)
+            try? FileManager.default.removeItem(at: shared)
+            do {
+                try FileManager.default.copyItem(at: fileURL, to: shared)
+            } catch {
+                let alert = UIAlertController(title: String(localizationKey: "Unknown", type: .error), message: "\(error)", preferredStyle: .alert)
+                alert.addAction(UIAlertAction(title: String(localizationKey: "OK"), style: .cancel, handler: nil))
+                self.viewControllerForPresentation?.present(alert, animated: true, completion: nil)
+                return
+            }
+            let activity = UIActivityViewController(activityItems: [shared], applicationActivities: nil)
+            activity.completionWithItemsHandler = { _, _, _, _ in try? FileManager.default.removeItem(at: shared) }
+            activity.popoverPresentationController?.sourceView = self
+            activity.popoverPresentationController?.sourceRect = self.bounds
+            self.viewControllerForPresentation?.present(activity, animated: true, completion: nil)
+        }
+    }
+
+    private func showPackageInfo(_ package: Package) {
+        let controller = PackageControlInfoViewController(package: package)
+        let navigation = UINavigationController(rootViewController: controller)
+        viewControllerForPresentation?.present(navigation, animated: true, completion: nil)
     }
 
     @objc func showVersionPrompt(_ sender: Any?) {
@@ -84,9 +175,12 @@ class PackageQueueButton: PackageButton {
             })
         }
 
+        let installedVersion = PackageListManager.shared.installedPackage(identifier: package.package)?.version
         var versioncount=0
         for versionPackage in allPackages {
-            let title = package.fromStatusFile ? "\t\(versionPackage.version) • \(versionPackage.sourceRepo!.displayName)" : versionPackage.version
+            var title = package.fromStatusFile ? "\t\(versionPackage.version) • \(versionPackage.sourceRepo!.displayName)" : versionPackage.version
+            if let arch = versionPackage.architecture { title += " • \(arch)" }
+            if versionPackage.version == installedVersion { title += " ✓" }
             let versionAction = UIAlertAction(title: title, style: .default, handler: { (_: UIAlertAction) in
                 self.requestQueuePackage(package: versionPackage, queue: .installations)
             })
@@ -100,14 +194,7 @@ class PackageQueueButton: PackageButton {
 
         let cancelAction = UIAlertAction(title: String(localizationKey: "Package_Cancel_Action"), style: .cancel, handler: nil)
         versionPrompt.addAction(cancelAction)
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            versionPrompt.popoverPresentationController?.sourceView = self
-        }
-        let tintColor = self.tintColor
-        versionPrompt.view.tintColor = tintColor
-        viewControllerForPresentation?.present(versionPrompt, animated: true, completion: {
-            versionPrompt.view.tintColor = tintColor
-        })
+        presentSheet(versionPrompt)
     }
     
     func checkQueued(package: Package) -> Bool
@@ -515,5 +602,59 @@ class PackageQueueButton: PackageButton {
             let generator = UINotificationFeedbackGenerator()
             generator.notificationOccurred(.success)
         }
+    }
+}
+
+
+private final class PackageControlInfoViewController: UIViewController {
+    private let package: Package
+    private let textView = UITextView()
+
+    init(package: Package) {
+        self.package = package
+        super.init(nibName: nil, bundle: nil)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        title = String(localizationKey: "Package_View_Info")
+        view.backgroundColor = .sileoBackgroundColor
+        navigationItem.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(close))
+
+        textView.isEditable = false
+        textView.font = UIFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+        textView.backgroundColor = .clear
+        textView.textColor = .label
+        textView.textContainerInset = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
+        textView.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(textView)
+        NSLayoutConstraint.activate([
+            textView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            textView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            textView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            textView.trailingAnchor.constraint(equalTo: view.trailingAnchor)
+        ])
+
+        var text = ""
+        if let data = package.rawData, let raw = String(data: data, encoding: .utf8), !raw.isEmpty {
+            text = raw
+        } else {
+            text = package.rawControl.sorted { $0.key < $1.key }.map { "\($0.key): \($0.value)" }.joined(separator: "\n")
+        }
+        if let repo = package.sourceRepo {
+            text += "\n\nRepository: \(repo.displayName)"
+        }
+        if let local = package.local_deb {
+            text += "\n\nFile: \(local)"
+        }
+        textView.text = text
+    }
+
+    @objc private func close() {
+        dismiss(animated: true, completion: nil)
     }
 }
