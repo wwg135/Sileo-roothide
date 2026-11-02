@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          make clean package DEBUG=0 ALL_BOOTSTRAPS=1 SILEO_PLATFORM=iphoneos-arm64e
+          make clean package DEBUG=0 ALL_BOOTSTRAPS=1 SILEO_PLATFORM=iphoneos-arm64e XCPRETTY="| grep -E 'error:|BUILD (FAILED|SUCCEEDED)' || true"
           mkdir -p out
           cp packages/*.deb out/
 
