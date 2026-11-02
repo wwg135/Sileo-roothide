@@ -251,3 +251,4 @@
 "Compat_Unsupported_Arch" = "不支持转换 %@ 架构的软件包。";
 "Compat_Tool_Missing" = "缺少所需工具“%@”，请先安装。";
 "Compat_Not_Updated_Message" = "%@\n\n此软件包尚未适配 roothide，且无法自动转换，请联系开发者。";
+"Package_Architecture" = "架构：%@";

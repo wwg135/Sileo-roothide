@@ -252,3 +252,4 @@
 "Compat_Unsupported_Arch" = "%@ packages cannot be converted.";
 "Compat_Tool_Missing" = "The required tool \"%@\" is not installed.";
 "Compat_Not_Updated_Message" = "%@\n\nThis package has not been updated for roothide and cannot be converted automatically. Please contact its developer.";
+"Package_Architecture" = "Architecture: %@";

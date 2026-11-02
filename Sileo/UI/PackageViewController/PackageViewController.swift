@@ -458,6 +458,14 @@ class PackageViewController: SileoViewController, PackageQueueButtonDataProvider
             "title": package.fromStatusFile ? "\(package.package)" : "\(package.package) (\(package.version))"
         ])
         
+        if let architecture = package.architecture, !architecture.isEmpty {
+            footerViews.append([
+                "class": "DepictionSubheaderView",
+                "alignment": 1,
+                "title": String(format: String(localizationKey: "Package_Architecture"), architecture)
+            ])
+        }
+        
         let footerDict = [
             "class": "DepictionStackView",
             "views": footerViews
