@@ -99,6 +99,7 @@ enum RootlessConverter {
 
         try run(CommandPath.dpkgdeb, ["dpkg-deb", "-R", rootfs(deb.path), rootfs(old.path)], root: true)
         let originalMetadata = try readMetadata(at: old)
+        let archiveOwners = readArchiveOwners(of: deb)
         let owner = "\(getuid()):\(getgid())"
         try run(CommandPath.chown, ["chown", "-R", owner, rootfs(old.path)], root: true)
 
@@ -189,10 +190,11 @@ enum RootlessConverter {
             }
         }
 
-        try restorePermissions(originalMetadata, in: root, mode: mode)
-
         try run(CommandPath.chown, ["chown", "-R", "0:0", rootfs(root.path)], root: true)
-        try restoreOwnership(originalMetadata, in: root, mode: mode)
+        try restoreOwnership(originalMetadata, archiveOwners: archiveOwners, in: root, mode: mode)
+        // after the ownership: chown clears the set-id bits
+        try restorePermissions(originalMetadata, in: root, mode: mode)
+        try run(CommandPath.chmod, ["chmod", "0755", rootfs(root.path)], root: true)
         if mode == .rootless {
             let mirror = rootfs(root.appendingPathComponent(mirrorRelativePath).path)
             try run(CommandPath.chown, ["chown", "-R", "501:501", mirror], root: true)
@@ -249,28 +251,40 @@ enum RootlessConverter {
 
     private static func restorePermissions(_ metadata: [FileMetadata], in root: URL, mode: MachOPatcher.Mode) throws {
         let fm = FileManager.default
-        let entries = metadata.compactMap { item -> (String, Int, Bool)? in
-            guard !item.isSymbolicLink,
-                  let relativePath = relocatedPath(for: item.relativePath, mode: mode)
-            else { return nil }
-            return (root.appendingPathComponent(relativePath).path, item.permissions, item.isDirectory)
-        }
-        let orderedEntries = entries.filter { !$0.2 } + entries.filter { $0.2 }.sorted {
-            $0.0.filter { $0 == "/" }.count > $1.0.filter { $0 == "/" }.count
-        }
-        for (path, permissions, _) in orderedEntries {
+        var groups: [Int: [String]] = [:]
+        for item in metadata where !item.isSymbolicLink {
+            guard let relativePath = relocatedPath(for: item.relativePath, mode: mode) else { continue }
+            let path = root.appendingPathComponent(relativePath).path
             guard (try? fm.attributesOfItem(atPath: path)) != nil else { continue }
-            try fm.setAttributes([.posixPermissions: permissions], ofItemAtPath: path)
+            var permissions = item.permissions & 0o7777
+            // patch.sh makes the control directory 755 and its control file 644
+            if relativePath == "DEBIAN" || relativePath.hasPrefix("DEBIAN/") {
+                permissions = relativePath == "DEBIAN/control" ? 0o644 : 0o755
+            }
+            groups[permissions, default: []].append(rootfs(path))
+        }
+        for (permissions, paths) in groups {
+            let value = String(permissions, radix: 8)
+            for start in stride(from: 0, to: paths.count, by: 64) {
+                try run(CommandPath.chmod, ["chmod", value] + paths[start..<min(start + 64, paths.count)], root: true)
+            }
         }
     }
 
-    private static func restoreOwnership(_ metadata: [FileMetadata], in root: URL, mode: MachOPatcher.Mode) throws {
+    private static func restoreOwnership(_ metadata: [FileMetadata], archiveOwners: [String: (user: String, group: String)], in root: URL, mode: MachOPatcher.Mode) throws {
         let fm = FileManager.default
         let owners = Dictionary(grouping: metadata.compactMap { item -> (String, UInt32, UInt32)? in
             guard let relativePath = relocatedPath(for: item.relativePath, mode: mode) else { return nil }
             let path = root.appendingPathComponent(relativePath).path
             guard (try? fm.attributesOfItem(atPath: path)) != nil else { return nil }
-            return (path, item.owner, item.group)
+            var owner = item.owner
+            var group = item.group
+            // dpkg installs by the names an archive carries, not by the numbers beside them
+            if let names = archiveOwners[item.relativePath] {
+                owner = userID(named: names.user) ?? owner
+                group = groupID(named: names.group) ?? group
+            }
+            return (path, owner, group)
         }, by: { "\($0.1):\($0.2)" })
 
         for (owner, entries) in owners {
@@ -279,6 +293,39 @@ enum RootlessConverter {
                 try run(CommandPath.chown, ["chown", "-h", owner] + paths, root: true)
             }
         }
+    }
+
+    private static func userID(named name: String) -> UInt32? {
+        if let number = UInt32(name) { return number }
+        return getpwnam(name).map { $0.pointee.pw_uid }
+    }
+
+    private static func groupID(named name: String) -> UInt32? {
+        if let number = UInt32(name) { return number }
+        return getgrnam(name).map { $0.pointee.gr_gid }
+    }
+
+    /// The owner and group names of every entry, by path, from `dpkg-deb -c`.
+    private static func readArchiveOwners(of deb: URL) -> [String: (user: String, group: String)] {
+        guard let listing = try? run(CommandPath.dpkgdeb, ["dpkg-deb", "-c", rootfs(deb.path)], root: true) else { return [:] }
+        var owners: [String: (user: String, group: String)] = [:]
+        for line in listing.split(separator: "\n") {
+            let fields = line.split(separator: " ", maxSplits: 5, omittingEmptySubsequences: true)
+            guard fields.count == 6, let kind = fields[0].first else { continue }
+            let names = fields[1].split(separator: "/", maxSplits: 1, omittingEmptySubsequences: false)
+            guard names.count == 2 else { continue }
+            var path = String(fields[5])
+            if kind == "l", let range = path.range(of: " -> ") {
+                path = String(path[..<range.lowerBound])
+            } else if kind == "h", let range = path.range(of: " link to ") {
+                path = String(path[..<range.lowerBound])
+            }
+            if path.hasPrefix("./") { path.removeFirst(2) }
+            while path.hasSuffix("/") { path.removeLast() }
+            guard !path.isEmpty, path != "." else { continue }
+            owners[path] = (String(names[0]), String(names[1]))
+        }
+        return owners
     }
 
     /// var/jb/* becomes the package root, anything else goes to /rootfs, and the original package is kept in pkgmirror.

@@ -245,7 +245,7 @@
 "Non_Identifying" = "Only package and non-identifying device information is collected.";
 "Privacy_Policy" = "Privacy Policy";
 "Compatibility_Mode_Update" = "相容模式更新";
-"Compat_Converting" = "正在轉換…";
+"Compat_Converting" = "正在準備…";
 "Compat_Convert_Failed" = "轉換失敗";
 "Compat_Not_Convertible" = "此軟體包無法自動轉換。\n\n請聯絡開發者適配 roothide。";
 "Compat_Disabled_Message" = "%@\n\n此軟體包尚未適配 roothide。你可以聯絡開發者，或在設定中開啟「相容模式更新」以自動轉換。";

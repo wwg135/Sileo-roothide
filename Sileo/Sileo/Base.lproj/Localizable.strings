@@ -245,7 +245,7 @@
 "Non_Identifying" = "Only package and non-identifying device information is collected.";
 "Privacy_Policy" = "Privacy Policy";
 "Compatibility_Mode_Update" = "Compatibility Mode Update";
-"Compat_Converting" = "Converting…";
+"Compat_Converting" = "Preparing…";
 "Compat_Convert_Failed" = "Conversion Failed";
 "Compat_Not_Convertible" = "This package cannot be converted automatically.\n\nPlease contact its developer to update it for roothide.";
 "Compat_Disabled_Message" = "%@\n\nThis package has not been updated for roothide. You can contact its developer, or turn on Compatibility Mode Update in Settings to convert it automatically.";
