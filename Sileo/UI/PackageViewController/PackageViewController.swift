@@ -455,6 +455,7 @@ class PackageViewController: SileoViewController, PackageQueueButtonDataProvider
         footerViews.append([
             "class": "DepictionSubheaderView",
             "alignment": 1,
+            "useBottomMargin": false,
             "title": package.fromStatusFile ? "\(package.package)" : "\(package.package) (\(package.version))"
         ])
         
@@ -462,6 +463,7 @@ class PackageViewController: SileoViewController, PackageQueueButtonDataProvider
             footerViews.append([
                 "class": "DepictionSubheaderView",
                 "alignment": 1,
+                "useMargins": false,
                 "title": String(format: String(localizationKey: "Package_Architecture"), architecture)
             ])
         }
