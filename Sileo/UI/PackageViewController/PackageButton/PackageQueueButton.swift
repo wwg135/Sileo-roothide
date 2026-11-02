@@ -57,7 +57,20 @@ class PackageQueueButton: PackageButton {
                                                name: DownloadManager.lockStateChangeNotification,
                                                object: nil)
         
-        if #available(iOS 13.0, *) {
+        if #available(iOS 14.0, *) {
+            // UIButton.menu shows a plain popup on long press, without the blurred context-menu backdrop
+            menu = UIMenu(children: [
+                UIDeferredMenuElement.uncached { [weak self] completion in
+                    guard let self = self, let package = self.package, !(package.isProvisional ?? false) else {
+                        completion([])
+                        return
+                    }
+                    completion(self.longPressMenuItems(for: package).map { item in
+                        UIAction(title: item.title, image: UIImage(systemName: item.image)) { _ in item.handler() }
+                    })
+                }
+            ])
+        } else if #available(iOS 13.0, *) {
             let menuDelegate = PackageQueueMenuDelegate(button: self)
             contextMenuDelegate = menuDelegate
             addInteraction(UIContextMenuInteraction(delegate: menuDelegate))
