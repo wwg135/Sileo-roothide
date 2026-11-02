@@ -199,17 +199,20 @@ enum RootlessConverter {
             let mirror = rootfs(root.appendingPathComponent(mirrorRelativePath).path)
             try run(CommandPath.chown, ["chown", "-R", "501:501", mirror], root: true)
             try run(CommandPath.chmod, ["chmod", "-R", "0755", mirror], root: true)
-            // directories made up here for the mirror belong to mobile, as tar leaves them in
-            // patch.sh; dpkg would otherwise hand the device's own /var/mobile to root
+            // directories of the mirror, and the ones made up on the way to it, are root's in group mobile
             let known = Set(originalMetadata.compactMap { relocatedPath(for: $0.relativePath, mode: mode) })
-            var madeUp: [String] = []
-            for directory in ["var", "var/mobile", "var/mobile/Library"] where !known.contains(directory) {
-                let path = root.appendingPathComponent(directory).path
-                if fm.fileExists(atPath: path) { madeUp.append(rootfs(path)) }
+            var directories = ["var", "var/mobile", "var/mobile/Library"].filter { !known.contains($0) }
+            if let enumerator = fm.enumerator(atPath: root.appendingPathComponent(mirrorRelativePath).path) {
+                directories.append(mirrorRelativePath)
+                while let relative = enumerator.nextObject() as? String {
+                    if (enumerator.fileAttributes?[.type] as? FileAttributeType) == .typeDirectory {
+                        directories.append(mirrorRelativePath + "/" + relative)
+                    }
+                }
             }
-            if !madeUp.isEmpty {
-                try run(CommandPath.chown, ["chown", "501:501"] + madeUp, root: true)
-                try run(CommandPath.chmod, ["chmod", "0755"] + madeUp, root: true)
+            let paths = directories.map { rootfs(root.appendingPathComponent($0).path) }
+            for start in stride(from: 0, to: paths.count, by: 64) {
+                try run(CommandPath.chown, ["chown", "0:501"] + paths[start..<min(start + 64, paths.count)], root: true)
             }
         }
 
@@ -422,10 +425,24 @@ enum RootlessConverter {
 
         if mode == .rootless {
             let link = path + ".roothidepatch"
-            if (try? FileManager.default.destinationOfSymbolicLink(atPath: link)) == nil {
-                try? FileManager.default.createSymbolicLink(atPath: link, withDestinationPath: "/usr/lib/DynamicPatches/AutoPatches.dylib")
+            var existing = stat()
+            if lstat(link, &existing) != 0 {
+                try writeRawSymlink(target: "/usr/lib/DynamicPatches/AutoPatches.dylib", at: link)
             }
         }
+    }
+
+    /// roothide's libroot hooks symlink() and rewrites the target to
+    /// `/rootfs/usr/lib/...`; patch.sh's `ln -s` leaves it as is, which is what
+    /// PatchLoader needs (a dangling `.roothidepatch` makes SpringBoard abort).
+    /// The system's own symlink is called, as dyld resolves it from libsystem_kernel.
+    private static func writeRawSymlink(target: String, at link: String) throws {
+        typealias SymlinkFunction = @convention(c) (UnsafePointer<CChar>, UnsafePointer<CChar>) -> Int32
+        guard let handle = dlopen("/usr/lib/system/libsystem_kernel.dylib", RTLD_NOW),
+              let symbol = dlsym(handle, "symlink")
+        else { throw Failure.step("symlink", "libsystem_kernel") }
+        let result = unsafeBitCast(symbol, to: SymlinkFunction.self)(target, link)
+        guard result == 0 else { throw Failure.step("symlink", String(cString: strerror(errno))) }
     }
 
     private static func patchText(at path: String, relative: String, name: String) {
