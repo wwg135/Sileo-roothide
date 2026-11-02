@@ -425,24 +425,14 @@ enum RootlessConverter {
 
         if mode == .rootless {
             let link = path + ".roothidepatch"
+            // Sileo itself is not redirected, so the target is spelled as jbroot's `ln -s` in
+            // patch.sh stores it; dpkg-deb, which is, then reads it back as /usr/lib/...
+            // (a raw /usr/lib/... would be archived as /rootfs/usr/lib/... and not load)
             var existing = stat()
             if lstat(link, &existing) != 0 {
-                try writeRawSymlink(target: "/usr/lib/DynamicPatches/AutoPatches.dylib", at: link)
+                try? FileManager.default.createSymbolicLink(atPath: link, withDestinationPath: jbroot("/usr/lib/DynamicPatches/AutoPatches.dylib"))
             }
         }
-    }
-
-    /// roothide's libroot hooks symlink() and rewrites the target to
-    /// `/rootfs/usr/lib/...`; patch.sh's `ln -s` leaves it as is, which is what
-    /// PatchLoader needs (a dangling `.roothidepatch` makes SpringBoard abort).
-    /// The system's own symlink is called, as dyld resolves it from libsystem_kernel.
-    private static func writeRawSymlink(target: String, at link: String) throws {
-        typealias SymlinkFunction = @convention(c) (UnsafePointer<CChar>, UnsafePointer<CChar>) -> Int32
-        guard let handle = dlopen("/usr/lib/system/libsystem_kernel.dylib", RTLD_NOW),
-              let symbol = dlsym(handle, "symlink")
-        else { throw Failure.step("symlink", "libsystem_kernel") }
-        let result = unsafeBitCast(symbol, to: SymlinkFunction.self)(target, link)
-        guard result == 0 else { throw Failure.step("symlink", String(cString: strerror(errno))) }
     }
 
     private static func patchText(at path: String, relative: String, name: String) {
