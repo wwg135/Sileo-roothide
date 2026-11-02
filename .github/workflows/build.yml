@@ -21,7 +21,7 @@ env:
 
 jobs:
   build:
-    name: Build iphoneos-arm64 and iphoneos-arm64e
+    name: Build iphoneos-arm64e
     runs-on: xcode-27
     timeout-minutes: 90
 
@@ -51,19 +51,12 @@ jobs:
           dpkg-deb --version | head -1
           ldid 2>&1 | head -1 || true
 
-      - name: Build iphoneos-arm64 (rootless)
-        shell: bash
-        run: |
-          set -euo pipefail
-          make clean package DEBUG=0 ALL_BOOTSTRAPS=1 SILEO_PLATFORM=iphoneos-arm64
-          mkdir -p out
-          cp packages/*.deb out/
-
       - name: Build iphoneos-arm64e (roothide)
         shell: bash
         run: |
           set -euo pipefail
           make clean package DEBUG=0 ALL_BOOTSTRAPS=1 SILEO_PLATFORM=iphoneos-arm64e
+          mkdir -p out
           cp packages/*.deb out/
 
       - name: Verify packages
@@ -71,11 +64,10 @@ jobs:
         run: |
           set -euo pipefail
           cd out
-          for arch in iphoneos-arm64 iphoneos-arm64e; do
-            deb="$(ls ./*_"$arch".deb)"
-            test "$(dpkg-deb -f "$deb" Architecture)" = "$arch"
-            echo "$deb: $(dpkg-deb -f "$deb" Package) $(dpkg-deb -f "$deb" Version) [$arch]"
-          done
+          arch=iphoneos-arm64e
+          deb="$(ls ./*_"$arch".deb)"
+          test "$(dpkg-deb -f "$deb" Architecture)" = "$arch"
+          echo "$deb: $(dpkg-deb -f "$deb" Package) $(dpkg-deb -f "$deb" Version) [$arch]"
           shasum -a 256 ./*.deb > SHA256SUMS
           cat SHA256SUMS
 
