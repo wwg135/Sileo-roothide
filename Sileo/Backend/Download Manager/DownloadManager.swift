@@ -240,9 +240,14 @@ final class DownloadManager {
                     
                 } else {
                     
+                    let needsConversion = DownloadManager.needsConversion(package)
                     do {
-                        download.success = try self.verifyRepoPackage(package: package, fileURL: fileURL)
+                        download.success = try self.verifyRepoPackage(package: package, fileURL: fileURL, moveToCache: !needsConversion)
                         download.progress = 1
+                        if needsConversion && download.success {
+                            self.convertDownloaded(download: download, fileURL: fileURL)
+                            return
+                        }
                     } catch let error {
                         download.success = false
                         download.progress = 0
@@ -291,6 +296,105 @@ final class DownloadManager {
             
             download.task?.resume()
         }}
+    }
+    
+    private static let incompatibleHosts = ["apt.procurs.us", "ellekit.space"]
+    
+    // A rootless/rootful repo package that is queued as is and converted once it has been downloaded
+    static func needsConversion(_ package: Package) -> Bool {
+        guard package.local_deb == nil,
+              !checkRootHide(package),
+              UserDefaults.standard.bool(forKey: compatModeKey, fallback: true),
+              !incompatibleHosts.contains(package.sourceRepo?.url?.host ?? "")
+        else { return false }
+        return RootlessConverter.isConvertible(package: package)
+    }
+    
+    // running in aptQueue; the download keeps its slot until the conversion has finished
+    private func convertDownloaded(download: Download, fileURL: URL) {
+        let package = download.package
+        download.success = false
+        download.progress = 0.99
+        download.message = String(localizationKey: "Compat_Converting")
+        self.viewController.updateDownloadStatus(download: download)
+        
+        DispatchQueue.global(qos: .userInitiated).async {
+            let output = FileManager.default.temporaryDirectory.appendingPathComponent("\(UUID().uuidString).deb")
+            var converted: Package?
+            var failure: String?
+            do {
+                try RootlessConverter.convert(deb: fileURL, to: output)
+                guard let newPackage = PackageListManager.shared.package(url: output), checkRootHide(newPackage) else {
+                    throw RootlessConverter.Failure.step(String(localizationKey: "Compat_Convert_Failed"), "")
+                }
+                newPackage.origArchitecture = package.architecture
+                converted = newPackage
+            } catch {
+                NSLog("SileoLog: convertDownloaded failed \(error)")
+                failure = error.localizedDescription
+            }
+            try? FileManager.default.removeItem(at: fileURL)
+            
+            DownloadManager.aptQueue.async {
+                self.finishConversion(download: download, original: package, converted: converted, failure: failure, output: output)
+            }
+        }
+    }
+    
+    private func finishConversion(download: Download, original: Package, converted: Package?, failure: String?, output: URL) {
+        download.message = nil
+        
+        guard download.session == self.currentDownloadSession else {
+            try? FileManager.default.removeItem(at: output)
+            return
+        }
+        
+        func fail(_ reason: String) {
+            download.failureReason = reason
+            download.success = false
+            download.progress = 0
+            self.viewController.updateDownloadStatus(download: download)
+            self.currentDownloads -= 1
+            self.startMoreDownloads()
+        }
+        
+        guard let newPackage = converted, failure == nil else {
+            try? FileManager.default.removeItem(at: output)
+            fail(failure ?? String(localizationKey: "Compat_Convert_Failed"))
+            return
+        }
+        guard self.verifyLocalPackage(package: newPackage) else {
+            try? FileManager.default.removeItem(at: output)
+            fail(String(localizationKey: "Unknown", type: .error))
+            return
+        }
+        
+        // The converted package takes the place of the original one in the queue
+        let originalEntry = DownloadPackage(package: original)
+        let newEntry = DownloadPackage(package: newPackage)
+        if self.vars.upgrades.contains(originalEntry) {
+            self.vars.upgrades.remove(originalEntry)
+            self.vars.upgrades.insert(newEntry)
+        } else {
+            self.vars.installations.remove(originalEntry)
+            self.vars.installations.insert(newEntry)
+        }
+        download.package = newPackage
+        
+        do {
+            try self.recheckTotalOps()
+        } catch {
+            fail(error.localizedDescription)
+            DispatchQueue.main.async { self.viewController.reloadData() }
+            return
+        }
+        
+        download.success = true
+        download.progress = 1
+        DispatchQueue.main.async { self.viewController.reloadData() }
+        self.viewController.updateDownloadStatus(download: download)
+        self.currentDownloads -= 1
+        self.startMoreDownloads()
     }
     
     private func startMoreDownloads() {
@@ -373,7 +477,7 @@ final class DownloadManager {
         return true
     }
     
-    private func verifyRepoPackage(package: Package, fileURL: URL) throws -> Bool {
+    private func verifyRepoPackage(package: Package, fileURL: URL, moveToCache: Bool = true) throws -> Bool {
         let packageControl = package.rawControl
     
         let supportedHashTypes = PackageHashType.allCases.compactMap { type in packageControl[type.rawValue].map { (type, $0) } }
@@ -402,6 +506,8 @@ final class DownloadManager {
             throw Error.hashMismatch(packageHash: badHash, refHash: badRefHash)
         }
         
+        guard moveToCache else { return true }
+        
         #if !TARGET_SANDBOX && !targetEnvironment(simulator)
         let packageID = aptEncoded(string: package.package, isArch: false)
         let version = aptEncoded(string: package.version, isArch: false)
@@ -429,7 +535,10 @@ final class DownloadManager {
         self.vars.errors.removeAll()
         
         // Get a total of depends to be installed and break if empty
-        let installationsAndUpgrades = self.vars.installations.raw.union(self.vars.upgrades.raw)
+        let allInstalls = self.vars.installations.raw.union(self.vars.upgrades.raw)
+        // Packages that still have to be converted are resolved once the conversion has finished
+        let pendingConversion = allInstalls.filter { DownloadManager.needsConversion($0.package) }
+        let installationsAndUpgrades = allInstalls.subtracting(pendingConversion)
         guard !(installationsAndUpgrades.isEmpty && self.vars.uninstallations.isEmpty) else {
             return
         }
@@ -531,8 +640,8 @@ final class DownloadManager {
             installations.removeAll { uninstallDeps.contains($0) }
             uninstallations.removeAll { installDeps.contains($0) }
             
-            installations.removeAll { !installDeps.contains($0) }
-            upgrades.removeAll { !installDeps.contains($0) }
+            installations.removeAll { !installDeps.contains($0) && !pendingConversion.contains($0) }
+            upgrades.removeAll { !installDeps.contains($0) && !pendingConversion.contains($0) }
             uninstallations.removeAll { !uninstallDeps.contains($0) }
             uninstallDeps.removeAll { uninstallations.contains($0) }
             installDeps.removeAll { installations.contains($0) }
@@ -945,7 +1054,7 @@ final class DownloadManager {
                 func showPatchAlert() {
                     NSLog("SileoLog: not updated for roothide: \(package.package) \(package.architecture)")
                     
-                    let IncompatibleRepo = ["apt.procurs.us","ellekit.space"].contains(package.sourceRepo?.url?.host)
+                    let IncompatibleRepo = DownloadManager.incompatibleHosts.contains(package.sourceRepo?.url?.host ?? "")
                     let compatMode = UserDefaults.standard.bool(forKey: DownloadManager.compatModeKey, fallback: true)
                     let convertible = !IncompatibleRepo && RootlessConverter.isConvertible(package: package)
                     
@@ -976,17 +1085,21 @@ final class DownloadManager {
                     self.patchAlert = alert
                 }
                 
-                DispatchQueue.main.async {
-                    if let patchAlert = self.patchAlert {
-                        patchAlert.dismiss(animated: true, completion: {
-                            self.patchAlert = nil
+                // converted after it has been downloaded from the queue
+                let convertInQueue = (queue == .installations || queue == .upgrades) && DownloadManager.needsConversion(package)
+                if !convertInQueue {
+                    DispatchQueue.main.async {
+                        if let patchAlert = self.patchAlert {
+                            patchAlert.dismiss(animated: true, completion: {
+                                self.patchAlert = nil
+                                showPatchAlert()
+                            })
+                        } else {
                             showPatchAlert()
-                        })
-                    } else {
-                        showPatchAlert()
+                        }
                     }
+                    return
                 }
-                return
             }
         }
         

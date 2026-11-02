@@ -10,6 +10,15 @@
 import Foundation
 
 enum RootlessConverter {
+    private struct FileMetadata {
+        let relativePath: String
+        let permissions: Int
+        let owner: UInt32
+        let group: UInt32
+        let isDirectory: Bool
+        let isSymbolicLink: Bool
+    }
+
     enum Failure: LocalizedError {
         case notConvertible
         case unsupportedArchitecture(String)
@@ -89,6 +98,7 @@ enum RootlessConverter {
         try fm.createDirectory(at: old, withIntermediateDirectories: true, attributes: nil)
 
         try run(CommandPath.dpkgdeb, ["dpkg-deb", "-R", rootfs(deb.path), rootfs(old.path)], root: true)
+        let originalMetadata = try readMetadata(at: old)
         let owner = "\(getuid()):\(getgid())"
         try run(CommandPath.chown, ["chown", "-R", owner, rootfs(old.path)], root: true)
 
@@ -115,8 +125,7 @@ enum RootlessConverter {
             root = old
         }
 
-        // Make every entry writable for us, remembering the modes to restore.
-        var modes: [(path: String, mode: Int)] = []
+        // Temporarily make every entry writable while retaining the archive metadata above.
         if let enumerator = fm.enumerator(atPath: root.path) {
             while let relative = enumerator.nextObject() as? String {
                 if relative == mirrorRelativePath {
@@ -124,17 +133,16 @@ enum RootlessConverter {
                     continue
                 }
                 let full = root.path + "/" + relative
-                guard let attributes = try? fm.attributesOfItem(atPath: full),
-                      let type = attributes[.type] as? FileAttributeType,
+                let attributes = try fm.attributesOfItem(atPath: full)
+                guard let type = attributes[.type] as? FileAttributeType,
                       type == .typeRegular || type == .typeDirectory,
                       var current = (attributes[.posixPermissions] as? NSNumber)?.intValue
                 else { continue }
                 if relative == "DEBIAN" || relative.hasPrefix("DEBIAN/") {
                     current = (relative == "DEBIAN/control") ? 0o644 : 0o755
                 }
-                modes.append((full, current))
                 let relaxed = current | (type == .typeDirectory ? 0o700 : 0o600)
-                try? fm.setAttributes([.posixPermissions: relaxed], ofItemAtPath: full)
+                try fm.setAttributes([.posixPermissions: relaxed], ofItemAtPath: full)
             }
         }
 
@@ -181,19 +189,14 @@ enum RootlessConverter {
             }
         }
 
-        for entry in modes {
-            try? fm.setAttributes([.posixPermissions: entry.mode], ofItemAtPath: entry.path)
-        }
+        try restorePermissions(originalMetadata, in: root, mode: mode)
 
         try run(CommandPath.chown, ["chown", "-R", "0:0", rootfs(root.path)], root: true)
+        try restoreOwnership(originalMetadata, in: root, mode: mode)
         if mode == .rootless {
             let mirror = rootfs(root.appendingPathComponent(mirrorRelativePath).path)
             try run(CommandPath.chown, ["chown", "-R", "501:501", mirror], root: true)
             try run(CommandPath.chmod, ["chmod", "-R", "0755", mirror], root: true)
-        }
-        // chown may have cleared set-id bits
-        for entry in modes where entry.mode & 0o6000 != 0 {
-            spawn(command: CommandPath.chmod, args: ["chmod", String(entry.mode, radix: 8), rootfs(entry.path)], root: true)
         }
 
         try run(CommandPath.dpkgdeb, ["dpkg-deb", "-Zzstd", "-b", rootfs(root.path), rootfs(output.path)], root: true)
@@ -201,6 +204,82 @@ enum RootlessConverter {
     }
 
     // MARK: - Layout
+
+    private static func readMetadata(at root: URL) throws -> [FileMetadata] {
+        guard let enumerator = FileManager.default.enumerator(atPath: root.path) else {
+            throw Failure.step("Reading package metadata", "Unable to enumerate extracted package")
+        }
+
+        var metadata: [FileMetadata] = []
+        while let relative = enumerator.nextObject() as? String {
+            let path = root.appendingPathComponent(relative).path
+            let attributes = try FileManager.default.attributesOfItem(atPath: path)
+            guard let type = attributes[.type] as? FileAttributeType else { continue }
+            guard type == .typeRegular || type == .typeDirectory || type == .typeSymbolicLink else { continue }
+            guard let permissions = (attributes[.posixPermissions] as? NSNumber)?.intValue,
+                  let owner = (attributes[.ownerAccountID] as? NSNumber)?.uint32Value,
+                  let group = (attributes[.groupOwnerAccountID] as? NSNumber)?.uint32Value
+            else {
+                throw Failure.step("Reading package metadata", "Unable to read permissions or ownership for \(relative)")
+            }
+
+            metadata.append(FileMetadata(relativePath: relative,
+                                         permissions: permissions,
+                                         owner: owner,
+                                         group: group,
+                                         isDirectory: type == .typeDirectory,
+                                         isSymbolicLink: type == .typeSymbolicLink))
+        }
+        return metadata
+    }
+
+    private static func relocatedPath(for relativePath: String, mode: MachOPatcher.Mode) -> String? {
+        guard mode == .rootless else { return relativePath }
+        if relativePath == "var/jb" || relativePath == "var" {
+            return nil
+        }
+        if relativePath.hasPrefix("var/jb/") {
+            return String(relativePath.dropFirst("var/jb/".count))
+        }
+        if relativePath == "DEBIAN" || relativePath.hasPrefix("DEBIAN/") {
+            return relativePath
+        }
+        return "rootfs/" + relativePath
+    }
+
+    private static func restorePermissions(_ metadata: [FileMetadata], in root: URL, mode: MachOPatcher.Mode) throws {
+        let fm = FileManager.default
+        let entries = metadata.compactMap { item -> (String, Int, Bool)? in
+            guard !item.isSymbolicLink,
+                  let relativePath = relocatedPath(for: item.relativePath, mode: mode)
+            else { return nil }
+            return (root.appendingPathComponent(relativePath).path, item.permissions, item.isDirectory)
+        }
+        let orderedEntries = entries.filter { !$0.2 } + entries.filter { $0.2 }.sorted {
+            $0.0.filter { $0 == "/" }.count > $1.0.filter { $0 == "/" }.count
+        }
+        for (path, permissions, _) in orderedEntries {
+            guard (try? fm.attributesOfItem(atPath: path)) != nil else { continue }
+            try fm.setAttributes([.posixPermissions: permissions], ofItemAtPath: path)
+        }
+    }
+
+    private static func restoreOwnership(_ metadata: [FileMetadata], in root: URL, mode: MachOPatcher.Mode) throws {
+        let fm = FileManager.default
+        let owners = Dictionary(grouping: metadata.compactMap { item -> (String, UInt32, UInt32)? in
+            guard let relativePath = relocatedPath(for: item.relativePath, mode: mode) else { return nil }
+            let path = root.appendingPathComponent(relativePath).path
+            guard (try? fm.attributesOfItem(atPath: path)) != nil else { return nil }
+            return (path, item.owner, item.group)
+        }, by: { "\($0.1):\($0.2)" })
+
+        for (owner, entries) in owners {
+            for start in stride(from: 0, to: entries.count, by: 64) {
+                let paths = entries[start..<min(start + 64, entries.count)].map { rootfs($0.0) }
+                try run(CommandPath.chown, ["chown", "-h", owner] + paths, root: true)
+            }
+        }
+    }
 
     /// var/jb/* becomes the package root, anything else goes to /rootfs, and the original package is kept in pkgmirror.
     private static func relocateRootless(old: URL, work: URL, identifier: String) throws -> URL {
