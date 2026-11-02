@@ -993,12 +993,10 @@ final class DownloadManager {
             }
         }
         
-        func updateMsg(msg: String, isError: Bool) {
-            if isError {
-                DispatchQueue.main.async {
-                    progressView.isHidden = true
-                    percentLabel.isHidden = true
-                }
+        func showFailure(msg: String) {
+            DispatchQueue.main.async {
+                progressView.isHidden = true
+                percentLabel.isHidden = true
             }
             updateMsg(msg: msg)
         }
@@ -1030,7 +1028,7 @@ final class DownloadManager {
         // See if theres an overriding web URL for downloading the package from
         self.overrideDownloadURL(package: package, repo: repo) { errorMessage, overrideURL in
             if overrideURL == nil && errorMessage != nil {
-                updateMsg(msg: "\(errorMessage)", isError: true)
+                showFailure(msg: "\(errorMessage)")
                 return
             }
             let downloadURL = overrideURL ?? URL(string: packageURL)
@@ -1058,7 +1056,7 @@ final class DownloadManager {
                 if package.local_deb==nil && (fileSizeStr != package.size) {
                     let failureReason = String(format: String(localizationKey: "Download_Size_Mismatch", type: .error),
                                                package.size ?? "nil", fileSizeStr)
-                    updateMsg(msg: "\(failureReason)", isError: true)
+                    showFailure(msg: "\(failureReason)")
                 } else {
                     finishDownload(fileURL: fileURL)
                 }
@@ -1066,7 +1064,7 @@ final class DownloadManager {
             }, failure: { task, statusCode, error in
                 let failureReason = error?.localizedDescription ?? String(format: String(localizationKey: "Download_Failing_Status_Code", type: .error), statusCode)
                 
-                updateMsg(msg: "\(failureReason)", isError: true)
+                showFailure(msg: "\(failureReason)")
                 
             }, waiting: { task, message in
                 updateMsg(msg: "\(message)")

@@ -165,16 +165,18 @@ class PackageQueueButton: PackageButton {
         if let sourceRepo = package.sourceRepo, !repos.contains(sourceRepo) {
             repos.append(sourceRepo)
         }
-        let sections = repos
-            .map { repo in
-                (
-                    title: repo.displayName,
-                    packages: repo.allVersions(identifier: package.package, ignoreArch: true)
-                        .sorted { DpkgWrapper.isVersion($0.version, greaterThan: $1.version) }
-                )
+        var sections: [(title: String, packages: [Package])] = []
+        for repo in repos {
+            let versions = repo.allVersions(identifier: package.package, ignoreArch: true)
+            if versions.isEmpty { continue }
+            let sorted = versions.sorted { (first: Package, second: Package) -> Bool in
+                DpkgWrapper.isVersion(first.version, greaterThan: second.version)
             }
-            .filter { !$0.packages.isEmpty }
-            .sorted { $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending }
+            sections.append((title: repo.displayName, packages: sorted))
+        }
+        sections.sort { (first, second) -> Bool in
+            first.title.localizedCaseInsensitiveCompare(second.title) == .orderedAscending
+        }
 
         guard !sections.isEmpty else { return }
         let picker = PackageVersionPickerController(sections: sections) { [weak self] selected in
