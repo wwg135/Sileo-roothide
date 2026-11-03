@@ -308,13 +308,13 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 tabBarFrame.size.width -= 320
             }
         }
-        if isFloatingEnabled {
-            return floatingTabBarFrame(for: tabBarFrame)
-        }
         return tabBarFrame
     }
     
     private var floatingInset: CGFloat { 16 }
+    private var floatingBackground: UIView?
+    private var originalStandardAppearance: UITabBarAppearance?
+    private var originalScrollEdgeAppearance: UITabBarAppearance?
 
     private var isFloatingEnabled: Bool {
         UIDevice.current.userInterfaceIdiom == .phone && UserDefaults.standard.bool(forKey: "FloatingTabBar", fallback: false)
@@ -323,35 +323,57 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     @objc private func floatingTabBarChanged() {
         self.view.setNeedsLayout()
         self.view.layoutIfNeeded()
-        self.updatePopup(animated: false)
     }
 
     private func applyFloatingStyle() {
-        let layer = self.tabBar.layer
         guard isFloatingEnabled else {
-            layer.cornerRadius = 0
-            layer.shadowOpacity = 0
+            if let container = floatingBackground {
+                container.removeFromSuperview()
+                floatingBackground = nil
+                self.tabBar._blurEnabled = true
+                self.tabBar.standardAppearance = originalStandardAppearance ?? UITabBarAppearance()
+                self.tabBar.scrollEdgeAppearance = originalScrollEdgeAppearance
+                self.tabBar.itemWidth = 0
+                self.tabBar.itemSpacing = 0
+            }
             return
         }
-        layer.cornerRadius = 24
-        layer.cornerCurve = .continuous
-        layer.masksToBounds = false
-        layer.shadowColor = UIColor.black.cgColor
-        layer.shadowOpacity = 0.2
-        layer.shadowRadius = 10
-        layer.shadowOffset = CGSize(width: 0, height: 4)
-        let floatingFrame = floatingTabBarFrame(for: self.tabBar.frame)
-        if self.tabBar.frame != floatingFrame {
-            self.tabBar.frame = floatingFrame
-        }
-    }
+        if floatingBackground == nil {
+            originalStandardAppearance = self.tabBar.standardAppearance
+            originalScrollEdgeAppearance = self.tabBar.scrollEdgeAppearance
+            let appearance = UITabBarAppearance()
+            appearance.configureWithTransparentBackground()
+            self.tabBar.standardAppearance = appearance
+            self.tabBar.scrollEdgeAppearance = appearance
+            self.tabBar._blurEnabled = false
 
-    private func floatingTabBarFrame(for frame: CGRect) -> CGRect {
-        var result = frame
-        result.origin.x = floatingInset
-        result.size.width = self.view.bounds.width - floatingInset * 2
-        result.origin.y = self.view.bounds.height - frame.height - 8
-        return result
+            let container = UIView()
+            container.isUserInteractionEnabled = false
+            container.layer.shadowColor = UIColor.black.cgColor
+            container.layer.shadowOpacity = 0.2
+            container.layer.shadowRadius = 10
+            container.layer.shadowOffset = CGSize(width: 0, height: 4)
+            let blur = UIVisualEffectView(effect: UIBlurEffect(style: .systemChromeMaterial))
+            blur.tag = 1
+            blur.clipsToBounds = true
+            blur.layer.cornerCurve = .continuous
+            container.addSubview(blur)
+            self.tabBar.insertSubview(container, at: 0)
+            floatingBackground = container
+        }
+        guard let container = floatingBackground, let blur = container.viewWithTag(1) else { return }
+        let barHeight: CGFloat = 64
+        let frame = CGRect(x: floatingInset, y: 0, width: self.tabBar.bounds.width - floatingInset * 2, height: barHeight)
+        container.frame = frame
+        blur.frame = container.bounds
+        blur.layer.cornerRadius = barHeight / 2
+        container.layer.shadowPath = UIBezierPath(roundedRect: container.bounds, cornerRadius: barHeight / 2).cgPath
+        self.tabBar.sendSubviewToBack(container)
+
+        let count = CGFloat(max(self.tabBar.items?.count ?? 1, 1))
+        self.tabBar.itemPositioning = .centered
+        self.tabBar.itemSpacing = 0
+        self.tabBar.itemWidth = (frame.width - 24) / count
     }
 
     override var insetsForBottomDockingView: UIEdgeInsets {
