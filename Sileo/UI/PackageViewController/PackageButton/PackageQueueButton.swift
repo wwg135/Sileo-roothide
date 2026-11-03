@@ -67,7 +67,7 @@ class PackageQueueButton: PackageButton {
                         return
                     }
                     completion(self.longPressMenuItems(for: package).map { item in
-                        UIAction(title: item.title, image: UIImage(systemName: item.image)) { _ in item.handler() }
+                        UIAction(title: item.title, image: UIImage(systemName: item.image), attributes: item.destructive ? .destructive : []) { _ in item.handler() }
                     })
                 }
             ])
@@ -104,7 +104,7 @@ class PackageQueueButton: PackageButton {
         }
         let menu = UIAlertController(title: package.name, message: nil, preferredStyle: .alert)
         for item in longPressMenuItems(for: package) {
-            menu.addAction(UIAlertAction(title: item.title, style: .default) { _ in item.handler() })
+            menu.addAction(UIAlertAction(title: item.title, style: item.destructive ? .destructive : .default) { _ in item.handler() })
         }
         menu.addAction(UIAlertAction(title: String(localizationKey: "Package_Cancel_Action"), style: .cancel, handler: nil))
         let tintColor = self.tintColor
@@ -114,21 +114,58 @@ class PackageQueueButton: PackageButton {
         })
     }
 
-    fileprivate func longPressMenuItems(for package: Package) -> [(title: String, image: String, handler: () -> Void)] {
-        var items: [(title: String, image: String, handler: () -> Void)] = [
-            (String(localizationKey: "Package_Choose_Version"), "list.bullet", { self.showVersionPrompt(nil) })
-        ]
+    fileprivate typealias MenuItem = (title: String, image: String, destructive: Bool, handler: () -> Void)
+
+    // Primary actions (install / update / reinstall / downgrade, uninstall) come first and follow the page's selected version
+    fileprivate func longPressMenuItems(for package: Package) -> [MenuItem] {
+        var items: [MenuItem] = []
+
+        if let installed = PackageListManager.shared.installedPackage(identifier: package.package) {
+            var target: Package?
+            var title = String(localizationKey: "Package_Reinstall_Action")
+            var image = "arrow.clockwise.circle"
+            var queue = DownloadManagerQueue.installations
+            if package.fromStatusFile || package.version == installed.version {
+                target = downloadablePackage(for: package)
+            } else if DpkgWrapper.isVersion(package.version, greaterThan: installed.version) {
+                target = package
+                title = String(localizationKey: "Package_Upgrade_Action")
+                image = "icloud.and.arrow.down"
+                queue = .upgrades
+            } else {
+                target = package
+                title = String(localizationKey: "Package_Downgrade_Action")
+                image = "arrow.down.circle"
+            }
+            if let target = target {
+                items.append((title, image, false, {
+                    self.hapticResponse()
+                    self.requestQueuePackage(package: target, queue: queue)
+                }))
+            }
+            items.append((String(localizationKey: "Package_Uninstall_Action"), "trash.circle", true, {
+                self.hapticResponse()
+                self.requestQueuePackage(package: package, queue: .uninstallations)
+            }))
+        } else if !package.fromStatusFile && (package.sourceRepo != nil || package.local_deb != nil) {
+            items.append((String(localizationKey: "Package_Get_Action"), "square.and.arrow.down", false, {
+                self.hapticResponse()
+                self.requestQueuePackage(package: package, queue: .installations)
+            }))
+        }
+
+        items.append((String(localizationKey: "Package_Choose_Version"), "list.bullet", false, { self.showVersionPrompt(nil) }))
 
         if let installed = PackageListManager.shared.installedPackage(identifier: package.package) {
             let holding = installed.wantInfo == .hold
             let title = String(localizationKey: holding ? "Package_Hold_Disable_Action" : "Package_Hold_Enable_Action")
-            items.append((title, holding ? "hand.raised.slash" : "hand.raised", { self.setIgnoreUpdates(!holding, installed: installed) }))
+            items.append((title, holding ? "hand.raised.slash" : "hand.raised", false, { self.setIgnoreUpdates(!holding, installed: installed) }))
         }
 
         if let downloadable = downloadablePackage(for: package) {
-            items.append((String(localizationKey: "Package_Download_Deb"), "arrow.down.to.line", { self.downloadDeb(downloadable) }))
+            items.append((String(localizationKey: "Package_Download_Deb"), "arrow.down.to.line", false, { self.downloadDeb(downloadable) }))
         }
-        items.append((String(localizationKey: "Package_View_Info"), "doc.text", { self.showPackageInfo(package) }))
+        items.append((String(localizationKey: "Package_View_Info"), "doc.text", false, { self.showPackageInfo(package) }))
         return items
     }
 
@@ -360,67 +397,10 @@ class PackageQueueButton: PackageButton {
         }
         var actionItems: [CSActionItem] = []
 
-        let downloadManager = DownloadManager.shared
-        
-        if downloadManager.queueRunning { return [] }
+        if DownloadManager.shared.queueRunning { return [] }
 
-        //self.installedPackage may not be ready yet
-        if let installedPackage = PackageListManager.shared.installedPackage(identifier: package.package) {
-            if !package.commercial || (paymentInfo?.available ?? false) {
-                var repo: Repo?
-                for repoEntry in RepoManager.shared.repoList where
-                    repoEntry.rawEntry == package.sourceFile {
-                    repo = repoEntry
-                }
-                if package.filename != nil && repo != nil {
-                    if DpkgWrapper.isVersion(package.version, greaterThan: installedPackage.version) {
-                        let action = CSActionItem(title: String(localizationKey: "Package_Upgrade_Action"),
-                                                  image: UIImage(systemNameOrNil: "icloud.and.arrow.down"),
-                                                  style: .default) {
-                            self.hapticResponse()
-                            self.requestQueuePackage(package: package, queue: .upgrades)
-                        }
-                        actionItems.append(action)
-                    } else if package.version == installedPackage.version {
-                        let action = CSActionItem(title: String(localizationKey: "Package_Reinstall_Action"),
-                                                  image: UIImage(systemNameOrNil: "arrow.clockwise.circle"),
-                                                  style: .default) {
-                            self.hapticResponse()
-                            self.requestQueuePackage(package: package, queue: .installations)
-                        }
-                        actionItems.append(action)
-                    } else {
-                        let action = CSActionItem(title: String(localizationKey: "Package_Downgrade_Action"),
-                                                  image: UIImage(systemNameOrNil: "arrow.down.circle"),
-                                                  style: .default) {
-                            self.hapticResponse()
-                            self.requestQueuePackage(package: package, queue: .installations)
-                        }
-                        actionItems.append(action)
-                    }
-                }
-            }
-            let action = CSActionItem(title: String(localizationKey: "Package_Uninstall_Action"),
-                                      image: UIImage(systemNameOrNil: "trash.circle"),
-                                      style: .destructive) {
-                self.hapticResponse()
-                self.requestQueuePackage(package: package, queue: .uninstallations)
-            }
-            actionItems.append(action)
-        } else if !package.fromStatusFile {
-            let action = CSActionItem(title: String(localizationKey: "Package_Get_Action"),
-                                      image: UIImage(systemNameOrNil: "square.and.arrow.down"),
-                                      style: .default) {
-                
-                NSLog("SileoLog: Package_Get_Action0 \(package.package) \(package.sourceRepo) \(package.commercial) \(self.paymentInfo?.purchased)")
-                self.hapticResponse()
-                self.requestQueuePackage(package: package, queue: .installations)
-            }
-            actionItems.append(action)
-        }
-    
         for item in longPressMenuItems(for: package) {
-            actionItems.append(CSActionItem(title: item.title, image: UIImage(systemNameOrNil: item.image), style: .default) {
+            actionItems.append(CSActionItem(title: item.title, image: UIImage(systemNameOrNil: item.image), style: item.destructive ? .destructive : .default) {
                 self.useVisiblePresenter()
                 item.handler()
             })
@@ -475,61 +455,10 @@ class PackageQueueButton: PackageButton {
             
             NotificationCenter.default.post(name: PackageQueueButton.actionPerformedNotification, object: nil)
                 
-        } else if let installedPackage = installedPackage {
+        } else if installedPackage != nil {
             NSLog("SileoLog: \(package.package) commercial=\(package.commercial) purchased=\(paymentInfo?.purchased) price=\(paymentInfo?.price) available=\(paymentInfo?.available)")
-            // road clear to modify an installed package, now we gotta decide what modification
-            let downloadPopup: UIAlertController! = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
-//            if !package.commercial || (paymentInfo?.available ?? false) {
-                var repo: Repo?
-                for repoEntry in RepoManager.shared.repoList where
-                    repoEntry.rawEntry == package.sourceFile {
-                    repo = repoEntry
-                 }
-                if !package.fromStatusFile {
-                    if DpkgWrapper.isVersion(package.version, greaterThan: installedPackage.version) {
-                        let upgradeAction = UIAlertAction(title: String(localizationKey: "Package_Upgrade_Action"), style: .default) { _ in
-                            self.requestQueuePackage(package: package, queue: .upgrades)
-                        }
-                        downloadPopup.addAction(upgradeAction)
-                    } else if package.version == installedPackage.version {
-                        let reinstallAction = UIAlertAction(title: String(localizationKey: "Package_Reinstall_Action"), style: .default) { _ in
-                            self.requestQueuePackage(package: package, queue: .installations)
-                        }
-                        downloadPopup.addAction(reinstallAction)
-                    } else {
-                        let downgradeAction = UIAlertAction(title: String(localizationKey: "Package_Downgrade_Action"), style: .default) { _ in
-                            self.requestQueuePackage(package: package, queue: .installations)
-                        }
-                        downloadPopup.addAction(downgradeAction)
-                    }
-                } else if let hasRepoPackage = PackageListManager.shared.newestPackage(identifier: package.package) {
-                    let reinstallAction = UIAlertAction(title: String(localizationKey: "Package_Reinstall_Action"), style: .default) { _ in
-                        downloadPopup.dismiss(animated: false) {
-                            self.showVersionPrompt(nil)
-                        }
-                    }
-                    downloadPopup.addAction(reinstallAction)
-                }
-//            }
-
-            let removeAction = UIAlertAction(title: String(localizationKey: "Package_Uninstall_Action"), style: .default, handler: { _ in
-                self.requestQueuePackage(package: package, queue: .uninstallations)
-            })
-            downloadPopup.addAction(removeAction)
-            let cancelAction: UIAlertAction! = UIAlertAction(title: String(localizationKey: "Package_Cancel_Action"), style: .cancel)
-            downloadPopup.addAction(cancelAction)
-            if UIDevice.current.userInterfaceIdiom == .pad {
-                downloadPopup.popoverPresentationController?.sourceView = self
-            }
-            let tintColor: UIColor! = self.tintColor
-            if tintColor != nil {
-                downloadPopup.view.tintColor = tintColor
-            }
-            self.viewControllerForPresentation?.present(downloadPopup, animated: true, completion: {
-                if tintColor != nil {
-                    downloadPopup.view.tintColor = tintColor
-                }
-            })
+            // road clear to modify an installed package: show the same menu as long press
+            self.showLongPressMenu()
         } else if package.sourceRepo != nil || package.local_deb != nil {
             self.requestQueuePackage(package: package, queue: .installations)
         } else {
