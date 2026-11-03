@@ -160,15 +160,19 @@ final class PackageListManager {
         return (top.package, !tied.isEmpty)
     }
 
-    // An installed package is updated from the source it was installed from; without a record (or when that
-    // source is gone) every source is considered
+    // The newest version available from any source; when the install source offers that same newest version,
+    // that source wins
     public func updateCandidate(for installed: Package) -> Package? {
+        guard let global = self.newestPackage(identifier: installed.package, repoContext: nil) else {
+            return nil
+        }
         let origin = installedOrigin(of: installed)
         if !origin.ambiguous, let repo = origin.package?.sourceRepo,
-           let newest = repo.newestPackage(identifier: installed.package) {
-            return newest
+           let fromOrigin = repo.newestPackage(identifier: installed.package),
+           !DpkgWrapper.isVersion(global.version, greaterThan: fromOrigin.version) {
+            return fromOrigin
         }
-        return self.newestPackage(identifier: installed.package, repoContext: nil)
+        return global
     }
 
     public func availableUpdates() -> [(Package, Package?)] {
