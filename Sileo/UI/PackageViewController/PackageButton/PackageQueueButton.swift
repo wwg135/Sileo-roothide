@@ -178,7 +178,24 @@ class PackageQueueButton: PackageButton {
             candidates += repo.allVersions(identifier: package.package, ignoreArch: true)
                 .filter { $0.version == package.version && $0.filename != nil }
         }
-        return candidates.first { $0.architecture == package.architecture } ?? candidates.first
+        // The status file doesn't record which source an installed package came from, so pick the candidate
+        // whose control fields best match what is installed (installed-size is the strongest signal)
+        func score(_ candidate: Package) -> Int {
+            var points = 0
+            if let size = package.installedSize, size == candidate.installedSize { points += 8 }
+            if candidate.architecture == package.architecture { points += 4 }
+            if candidate.name == package.name { points += 1 }
+            if candidate.description == package.description { points += 1 }
+            if candidate.section == package.section { points += 1 }
+            return points
+        }
+        var best: Package?
+        var bestScore = -1
+        for candidate in candidates where score(candidate) > bestScore {
+            best = candidate
+            bestScore = score(candidate)
+        }
+        return best
     }
 
     private func setIgnoreUpdates(_ ignore: Bool, package installed: Package) {
