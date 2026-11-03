@@ -195,7 +195,8 @@ class PackageQueueButton: PackageButton {
         }
 
         guard !sections.isEmpty else { return }
-        let picker = PackageVersionPickerController(sections: sections) { [weak self] selected in
+        let installedVersion = PackageListManager.shared.installedPackage(identifier: package.package)?.version
+        let picker = PackageVersionPickerController(sections: sections, installedVersion: installedVersion) { [weak self] selected in
             self?.requestQueuePackage(package: selected, queue: .installations)
         }
         let navigationController = UINavigationController(rootViewController: picker)
@@ -645,10 +646,12 @@ private final class PackageQueueMenuDelegate: NSObject, UIContextMenuInteraction
 
 private final class PackageVersionPickerController: UITableViewController {
     private let sections: [(title: String, packages: [Package])]
+    private let installedVersion: String?
     private let onPick: (Package) -> Void
 
-    init(sections: [(title: String, packages: [Package])], onPick: @escaping (Package) -> Void) {
+    init(sections: [(title: String, packages: [Package])], installedVersion: String?, onPick: @escaping (Package) -> Void) {
         self.sections = sections
+        self.installedVersion = installedVersion
         self.onPick = onPick
         super.init(style: .grouped)
     }
@@ -687,6 +690,9 @@ private final class PackageVersionPickerController: UITableViewController {
         let cell = tableView.dequeueReusableCell(withIdentifier: "Version", for: indexPath)
         let package = sections[indexPath.section].packages[indexPath.row]
         cell.textLabel?.text = package.version
+        let isInstalled = package.version == installedVersion
+        cell.accessoryType = isInstalled ? .checkmark : .none
+        cell.tintColor = isInstalled ? .systemGreen : nil
         cell.backgroundColor = .clear
         return cell
     }
