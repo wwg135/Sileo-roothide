@@ -366,7 +366,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             floatingBackground = container
         }
         guard let container = floatingBackground, let blur = container.viewWithTag(1) else { return }
-        let barHeight: CGFloat = 72
+        let barHeight: CGFloat = 78
         // Center the capsule on the visible icon+label row so top/bottom spacing is equal
         var rowMids: [CGFloat] = []
         func collect(_ view: UIView) {
