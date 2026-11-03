@@ -209,12 +209,9 @@ final class RepoManager {
         
         let components = components.trimmingCharacters(in: .whitespaces)
         let componentsArray = components.components(separatedBy: .whitespaces).filter({$0.isEmpty==false})
-        guard componentsArray.count <= 1 else {
-            return nil
-        }
         
-        NSLog("SileoLog: \(suites=="./") || \(componentsArray.isEmpty)")
-        guard ((suites=="./" ? 1:0) ^ (componentsArray.isEmpty ? 1:0)) == 0 else {
+        let isFlat = suites == "./" || suites.hasSuffix("/")
+        guard isFlat == componentsArray.isEmpty else {
             return nil
         }
         
@@ -1340,6 +1337,49 @@ final class RepoManager {
             
             parseRepoEntry(rawSources, at: url, withTypes: ["deb"], uris: [uri], suites: [suite], components: components)
         }
+    }
+
+    @discardableResult
+    public func parseIrisinReposFile(at url: URL) -> Bool {
+        guard let data = try? Data(contentsOf: url),
+              let plistObject = try? PropertyListSerialization.propertyList(from: data, options: [], format: nil),
+              let propertyList = plistObject as? [String: Any],
+              propertyList["format"] as? Int == 1,
+              let sources = propertyList["sources"] as? [[String: Any]] else {
+            NSLog("SileoLog: Invalid Irisin repositories file at \(url)")
+            return false
+        }
+
+        var parsedSources = 0
+        for source in sources {
+            guard let urlInfo = source["url"] as? [String: Any],
+                  let rawURL = urlInfo["relative"] as? String,
+                  !rawURL.contains(where: \.isWhitespace),
+                  let repoURL = URL(string: rawURL),
+                  ["http", "https"].contains(repoURL.scheme?.lowercased()),
+                  repoURL.host != nil,
+                  let components = source["components"] as? [String],
+                  components.allSatisfy({ !$0.isEmpty && !$0.contains(where: \.isWhitespace) }) else {
+                continue
+            }
+
+            let suite: String
+            if let distribution = source["distribution"] {
+                guard let distribution = distribution as? String,
+                      !distribution.contains(where: \.isWhitespace) else {
+                    continue
+                }
+                suite = distribution.isEmpty ? "./" : distribution
+            } else {
+                suite = "./"
+            }
+            let isFlat = suite == "./" || suite.hasSuffix("/")
+            guard isFlat == components.isEmpty else { continue }
+
+            parseRepoEntry("", at: url, withTypes: ["deb"], uris: [rawURL], suites: [suite], components: components)
+            parsedSources += 1
+        }
+        return parsedSources > 0
     }
     
     public func parseSourcesFile(at url: URL) {

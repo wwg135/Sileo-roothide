@@ -265,14 +265,14 @@ final class SourcesViewController: SileoViewController {
                         self.addSource(nil)
                     }
                     
-                    let importReposAction = UIAction(title: "Import Repos", image: .init(systemName: "archivebox")) { _ in
+                    let importReposAction = UIAction(title: String(localizationKey: "Import_Sources_File"), image: .init(systemName: "archivebox")) { _ in
                         self.promptImportRepos()
                     }
                     
-                    let menu = UIMenu(title: "Add Repos", children: [promptAddRepoAction, importReposAction])
+                    let menu = UIMenu(title: String(localizationKey: "Add_Source.Title"), children: [promptAddRepoAction, importReposAction])
                     nav.rightBarButtonItem = UIBarButtonItem(systemItem: .add, primaryAction: promptAddRepoAction, menu: menu)
                 } else {
-                    nav.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(self.addSource(_:)))
+                    nav.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(self.presentAddRepoOptions))
                 }
             }
             
@@ -294,22 +294,34 @@ final class SourcesViewController: SileoViewController {
 
     func importRepos(fromURL url: URL) {
         let _tmpManager = RepoManager()
+        let fileExtension = url.pathExtension.lowercased()
         
-        if url.pathExtension == "list" {
+        if fileExtension == "list" {
             _tmpManager.parseListFile(at: url, isImporting: true)
-        } else if url.pathExtension == "sources" {
+        } else if fileExtension == "sources" {
             _tmpManager.parseSourcesFile(at: url)
+        } else if fileExtension == "irisinrepos" {
+            guard _tmpManager.parseIrisinReposFile(at: url) else {
+                let alert = UIAlertController(
+                    title: String(localizationKey: "Warning"),
+                    message: String(localizationKey: "Import_Irisin_Failed"),
+                    preferredStyle: .alert
+                )
+                alert.addAction(UIAlertAction(title: String(localizationKey: "OK"), style: .default))
+                present(alert, animated: true)
+                return
+            }
         } else {
             _tmpManager.parsePlainTextFile(at: url)
         }
         
         var newRepos:[Repo] = []
         for repo in _tmpManager.repoList {
-            guard hasCompatibleSourceFormat(repo.rawURL, suite: repo.suite, components: repo.components) else { continue }
-            if let url = URL(string: repo.rawURL) {
-                if let newRepo = RepoManager.shared.addDistRepo(url: url, suites: repo.suite, components: repo.components.joined(separator: " ")) {
-                    newRepos.append(newRepo)
-                }
+            guard let repoURL = URL(string: repo.rawURL),
+                  ["http", "https"].contains(repoURL.scheme?.lowercased()),
+                  repoURL.host != nil else { continue }
+            if let newRepo = RepoManager.shared.addDistRepo(url: repoURL, suites: repo.suite, components: repo.components.joined(separator: " ")) {
+                newRepos.append(newRepo)
             }
         }
 
@@ -319,13 +331,32 @@ final class SourcesViewController: SileoViewController {
         }
     }
     
-    @available(iOS 14.0, *)
     private func promptImportRepos() {
-        let controller = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        let controller: UIDocumentPickerViewController
+        if #available(iOS 14.0, *) {
+            controller = UIDocumentPickerViewController(forOpeningContentTypes: [.item], asCopy: true)
+        } else {
+            controller = UIDocumentPickerViewController(documentTypes: ["public.item"], in: .import)
+        }
         let delegate = SourcesPickerImporterDelegate.shared
         delegate.sourcesVC = self
         controller.delegate = delegate
         self.present(controller, animated: true, completion: nil)
+    }
+
+    @objc private func presentAddRepoOptions() {
+        let alert = UIAlertController(title: String(localizationKey: "Add_Source.Title"), message: nil, preferredStyle: .actionSheet)
+        alert.addAction(UIAlertAction(title: String(localizationKey: "Add_Source.Button.Add"), style: .default) { [weak self] _ in
+            self?.addSource(nil)
+        })
+        alert.addAction(UIAlertAction(title: String(localizationKey: "Import_Sources_File"), style: .default) { [weak self] _ in
+            self?.promptImportRepos()
+        })
+        alert.addAction(UIAlertAction(title: String(localizationKey: "Cancel"), style: .cancel))
+        if let popover = alert.popoverPresentationController {
+            popover.barButtonItem = navigationItem.rightBarButtonItem
+        }
+        present(alert, animated: true)
     }
     
     class SourcesPickerImporterDelegate: NSObject, UIDocumentPickerDelegate {

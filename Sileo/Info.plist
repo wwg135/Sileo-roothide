@@ -47,6 +47,16 @@
 				<string>com.sileo.list</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Irisin Repositories File</string>
+			<key>LSHandlerRank</key>
+			<string>Default</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.irisin.repos</string>
+			</array>
+		</dict>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
@@ -731,6 +741,24 @@
 				<key>public.mime-type</key>
 				<array>
 					<string>application/x-list-file</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.content</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>Irisin Repositories File</string>
+			<key>UTTypeIdentifier</key>
+			<string>com.irisin.repos</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>irisinrepos</string>
 				</array>
 			</dict>
 		</dict>

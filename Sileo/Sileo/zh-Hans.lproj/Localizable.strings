@@ -116,6 +116,8 @@
 "Add_Source.Title" = "添加插件源";
 "Add_Source.Body" = "新增插件源地址";
 "Add_Source.Button.Add" = "添加插件源";
+"Import_Sources_File" = "批量导入越狱源";
+"Import_Irisin_Failed" = "Irisin 源文件无效或不包含有效的插件源。";
 "Add_Dist_Repo" = "添加发行版插件源";
 "Incorrect_Repo" = "%@ 似乎不是有效的插件源⁉️ 插件源可能处于离线状态，或者您输入错误。是否继续添加？";
 

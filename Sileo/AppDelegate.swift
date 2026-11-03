@@ -340,12 +340,17 @@ class SileoAppDelegate: UIResponder, UIApplicationDelegate, UITabBarControllerDe
                         guard let tabBarController = self.window?.rootViewController as? UITabBarController,
                               let sourcesSVC = tabBarController.viewControllers?[2] as? UISplitViewController,
                               let sourcesNVC = sourcesSVC.viewControllers[0] as? SileoNavigationController,
-                              let sourcesVC = sourcesNVC.viewControllers[0] as? SourcesViewController,
-                              url.startAccessingSecurityScopedResource() else {
-                                  return
-                              }
+                        let sourcesVC = sourcesNVC.viewControllers[0] as? SourcesViewController else {
+                            return
+                        }
+                        let didStartAccessing = url.startAccessingSecurityScopedResource()
+                        defer {
+                            if didStartAccessing {
+                          url.stopAccessingSecurityScopedResource()
+                            }
+                        }
+                        tabBarController.selectedViewController = sourcesSVC
                         sourcesVC.importRepos(fromURL: url)
-                        url.stopAccessingSecurityScopedResource()
                     }
                 } else {
                     // presentModally ignored; we always present modally for an external URL open.
