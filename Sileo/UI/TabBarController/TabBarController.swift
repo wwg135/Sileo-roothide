@@ -45,6 +45,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                                                name: SileoThemeManager.sileoChangedThemeNotification,
                                                object: nil)
         updateSileoColors()
+        (self.tabBar as? TabBar)?.onLayout = { [weak self] in self?.applyFloatingStyle() }
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(floatingTabBarChanged),
                                                name: Notification.Name("FloatingTabBar"),
@@ -364,8 +365,18 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         guard let container = floatingBackground, let blur = container.viewWithTag(1) else { return }
         let barHeight: CGFloat = 72
         // Center the capsule on the actual item row so top/bottom spacing is equal
-        let buttons = self.tabBar.subviews.filter { String(describing: type(of: $0)).contains("TabBarButton") }
-        let itemMidY = buttons.isEmpty ? 24.5 : buttons.map { $0.frame.midY }.reduce(0, +) / CGFloat(buttons.count)
+        var buttons: [UIView] = []
+        func collect(_ view: UIView) {
+            for sub in view.subviews {
+                if String(describing: type(of: sub)).contains("TabBarButton") {
+                    buttons.append(sub)
+                } else {
+                    collect(sub)
+                }
+            }
+        }
+        collect(self.tabBar)
+        let itemMidY = buttons.isEmpty ? 24.5 : buttons.map { self.tabBar.convert($0.bounds, from: $0).midY }.reduce(0, +) / CGFloat(buttons.count)
         let frame = CGRect(x: floatingInset, y: itemMidY - barHeight / 2, width: self.tabBar.bounds.width - floatingInset * 2, height: barHeight)
         container.frame = frame
         blur.frame = container.bounds
@@ -374,9 +385,12 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         self.tabBar.sendSubviewToBack(container)
 
         let count = CGFloat(max(self.tabBar.items?.count ?? 1, 1))
-        self.tabBar.itemPositioning = .centered
-        self.tabBar.itemSpacing = 0
-        self.tabBar.itemWidth = (frame.width - 8) / count
+        let itemWidth = ((frame.width - 8) / count).rounded(.down)
+        if self.tabBar.itemWidth != itemWidth {
+            self.tabBar.itemWidth = itemWidth
+        }
+        if self.tabBar.itemSpacing != 0 { self.tabBar.itemSpacing = 0 }
+        if self.tabBar.itemPositioning != .centered { self.tabBar.itemPositioning = .centered }
     }
 
     override var insetsForBottomDockingView: UIEdgeInsets {

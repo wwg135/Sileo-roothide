@@ -9,6 +9,14 @@
 import Foundation
 
 class TabBar: UITabBar {
+    var onLayout: (() -> Void)?
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        onLayout?()
+    }
+
+
     override var traitCollection: UITraitCollection {
         if UIDevice.current.userInterfaceIdiom == .phone {
             return super.traitCollection
