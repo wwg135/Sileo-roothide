@@ -712,6 +712,7 @@ extension PackageListViewController {
         guard let pvc = self.controller(indexPath: indexPath) else {
             return nil
         }
+        (pvc as? PackageViewController)?.configureVersionSelectionNavigationController(navigationController)
         
         let menuItems = pvc.actions()
         // a compact, centered preview leaves room for the menu instead of the full-height page covering it

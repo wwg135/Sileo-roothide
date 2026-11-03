@@ -857,4 +857,8 @@ class PackageViewController: SileoViewController, PackageQueueButtonDataProvider
         _ = self.view
         return downloadButton.actionItems().map({ $0.action() })
     }
+
+    func configureVersionSelectionNavigationController(_ navigationController: UINavigationController?) {
+        downloadButton.versionSelectionNavigationController = navigationController
+    }
 }
