@@ -67,7 +67,7 @@ class PackageQueueButton: PackageButton {
                         return
                     }
                     completion(self.longPressMenuItems(for: package).map { item in
-                        UIAction(title: item.title, image: UIImage(systemName: item.image), attributes: item.destructive ? .destructive : []) { _ in item.handler() }
+                        UIAction(title: item.title, image: UIImage(systemName: item.image), attributes: item.enabled ? (item.destructive ? .destructive : []) : .disabled) { _ in item.handler() }
                     })
                 }
             ])
@@ -104,7 +104,9 @@ class PackageQueueButton: PackageButton {
         }
         let menu = UIAlertController(title: package.name, message: nil, preferredStyle: .alert)
         for item in longPressMenuItems(for: package) {
-            menu.addAction(UIAlertAction(title: item.title, style: item.destructive ? .destructive : .default) { _ in item.handler() })
+            let action = UIAlertAction(title: item.title, style: item.destructive ? .destructive : .default) { _ in item.handler() }
+            action.isEnabled = item.enabled
+            menu.addAction(action)
         }
         menu.addAction(UIAlertAction(title: String(localizationKey: "Package_Cancel_Action"), style: .cancel, handler: nil))
         let tintColor = self.tintColor
@@ -114,11 +116,13 @@ class PackageQueueButton: PackageButton {
         })
     }
 
-    fileprivate typealias MenuItem = (title: String, image: String, destructive: Bool, handler: () -> Void)
+    fileprivate typealias MenuItem = (title: String, image: String, destructive: Bool, enabled: Bool, handler: () -> Void)
 
     // Primary actions (install / update / reinstall / downgrade, uninstall) come first and follow the page's selected version
     fileprivate func longPressMenuItems(for package: Package) -> [MenuItem] {
         var items: [MenuItem] = []
+        // a paid package that has not been bought yet can only be acted on once the price button turns into install
+        let unlocked = !awaitingPayment(for: package)
 
         if let installed = PackageListManager.shared.installedPackage(identifier: package.package) {
             var target: Package?
@@ -149,7 +153,7 @@ class PackageQueueButton: PackageButton {
                 image = "arrow.down.circle"
             }
             if let target = target {
-                items.append((title, image, false, {
+                items.append((title, image, false, true, {
                     self.hapticResponse()
                     if ambiguous {
                         // several sources match equally; let the user pick which one to reinstall from
@@ -160,28 +164,28 @@ class PackageQueueButton: PackageButton {
                     }
                 }))
             }
-            items.append((String(localizationKey: "Package_Uninstall_Action"), "trash.circle", true, {
+            items.append((String(localizationKey: "Package_Uninstall_Action"), "trash.circle", true, true, {
                 self.hapticResponse()
                 self.requestQueuePackage(package: package, queue: .uninstallations)
             }))
         } else if !package.fromStatusFile && (package.sourceRepo != nil || package.local_deb != nil) {
-            items.append((String(localizationKey: "Package_Get_Action"), "square.and.arrow.down", false, {
+            items.append((String(localizationKey: "Package_Get_Action"), "square.and.arrow.down", false, unlocked, {
                 self.hapticResponse()
                 self.requestQueuePackage(package: package, queue: .installations)
             }))
         }
 
-        items.append((String(localizationKey: "Package_Choose_Version"), "list.bullet", false, { self.showVersionPrompt(nil) }))
+        items.append((String(localizationKey: "Package_Choose_Version"), "list.bullet", false, unlocked, { self.showVersionPrompt(nil) }))
 
         let holdTarget = PackageListManager.shared.installedPackage(identifier: package.package)
         let holding = holdTarget?.wantInfo == .hold || (holdTarget == nil && DpkgWrapper.isIgnoringUpdates(package: package.package))
         let holdTitle = String(localizationKey: holding ? "Package_Hold_Disable_Action" : "Package_Hold_Enable_Action")
-        items.append((holdTitle, holding ? "hand.raised.slash" : "hand.raised", false, { self.setIgnoreUpdates(!holding, package: holdTarget ?? package) }))
+        items.append((holdTitle, holding ? "hand.raised.slash" : "hand.raised", false, true, { self.setIgnoreUpdates(!holding, package: holdTarget ?? package) }))
 
         if let downloadable = downloadablePackage(for: package) {
-            items.append((String(localizationKey: "Package_Download_Deb"), "arrow.down.to.line", false, { self.downloadDeb(downloadable) }))
+            items.append((String(localizationKey: "Package_Download_Deb"), "arrow.down.to.line", false, unlocked, { self.downloadDeb(downloadable) }))
         }
-        items.append((String(localizationKey: "Package_View_Info"), "doc.text", false, { self.showPackageInfo(package) }))
+        items.append((String(localizationKey: "Package_View_Info"), "doc.text", false, true, { self.showPackageInfo(package) }))
         return items
     }
 
@@ -508,6 +512,12 @@ class PackageQueueButton: PackageButton {
         NotificationCenter.default.post(name: PackageQueueButton.actionPerformedNotification, object: nil)
     }
     
+    // the state in which the button shows the price instead of install
+    private func awaitingPayment(for package: Package) -> Bool {
+        guard PackageListManager.shared.installedPackage(identifier: package.package) == nil else { return false }
+        return paymentInfo?.price != nil && package.commercial && !(paymentInfo?.purchased ?? false)
+    }
+    
     private var hasPurchased: Bool {
         guard let paymentInfo=self.paymentInfo else {
             return false
@@ -663,7 +673,7 @@ private final class PackageQueueMenuDelegate: NSObject, UIContextMenuInteraction
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak button] _ in
             guard let button = button else { return nil }
             let actions = button.longPressMenuItems(for: package).map { item in
-                UIAction(title: item.title, image: UIImage(systemName: item.image)) { _ in
+                UIAction(title: item.title, image: UIImage(systemName: item.image), attributes: item.enabled ? [] : .disabled) { _ in
                     item.handler()
                 }
             }
