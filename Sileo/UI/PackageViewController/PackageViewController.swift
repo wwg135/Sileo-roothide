@@ -349,6 +349,10 @@ class PackageViewController: SileoViewController, PackageQueueButtonDataProvider
             }
         }
 
+        self.reloadFooter(package: package, installedPackage: installedPackage)
+    }
+
+    private func reloadFooter(package: Package, installedPackage: Package?) {
         var footerViews = [[String: Any]]()
         if let installedPackage = installedPackage {
             footerViews.append(contentsOf: [
@@ -482,11 +486,24 @@ class PackageViewController: SileoViewController, PackageQueueButtonDataProvider
             self.depictionFooterView = depictionFooterView
             contentView.addSubview(depictionFooterView)
         }
+
     }
 
+    // Switching versions only refreshes what depends on the version, so the page does not flash like a full reload
     func show(package: Package) {
+        guard let current = self.package, current.package == package.package, !(package.isProvisional ?? false) else {
+            self.package = package
+            reloadData()
+            return
+        }
         self.package = package
-        reloadData()
+        installedPackage = PackageListManager.shared.installedPackage(identifier: package.package)
+        downloadButton.package = package
+        navBarDownloadButton?.package = package
+        updatePaymentInfo()
+        reloadFooter(package: package, installedPackage: installedPackage)
+        view.setNeedsLayout()
+        view.layoutIfNeeded()
     }
 
     func versionTooLow() {

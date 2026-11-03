@@ -714,8 +714,11 @@ extension PackageListViewController {
         }
         
         let menuItems = pvc.actions()
+        // a compact, centered preview leaves room for the menu instead of the full-height page covering it
+        let previewWidth = min(collectionView.bounds.width - 48, 360)
         let config = UIContextMenuConfiguration(identifier: nil, previewProvider: {
-            pvc
+            pvc.preferredContentSize = CGSize(width: previewWidth, height: min(collectionView.bounds.height * 0.4, 320))
+            return pvc
         }, actionProvider: { _ in
             UIMenu(title: "", options: .displayInline, children: menuItems)
         })
