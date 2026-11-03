@@ -124,11 +124,24 @@ class PackageQueueButton: PackageButton {
             items.append((title, holding ? "hand.raised.slash" : "hand.raised", { self.setIgnoreUpdates(!holding, installed: installed) }))
         }
 
-        if package.local_deb != nil || (package.filename != nil && package.sourceRepo != nil) {
-            items.append((String(localizationKey: "Package_Download_Deb"), "arrow.down.to.line", { self.downloadDeb(package) }))
+        if let downloadable = downloadablePackage(for: package) {
+            items.append((String(localizationKey: "Package_Download_Deb"), "arrow.down.to.line", { self.downloadDeb(downloadable) }))
         }
         items.append((String(localizationKey: "Package_View_Info"), "doc.text", { self.showPackageInfo(package) }))
         return items
+    }
+
+    // Installed (dpkg status) entries have no filename/repo, so resolve the same version from the sources
+    private func downloadablePackage(for package: Package) -> Package? {
+        if package.local_deb != nil || (package.filename != nil && package.sourceRepo != nil) {
+            return package
+        }
+        var candidates: [Package] = []
+        for repo in RepoManager.shared.repoList {
+            candidates += repo.allVersions(identifier: package.package, ignoreArch: true)
+                .filter { $0.version == package.version && $0.filename != nil }
+        }
+        return candidates.first { $0.architecture == package.architecture } ?? candidates.first
     }
 
     private func setIgnoreUpdates(_ ignore: Bool, installed: Package) {
