@@ -212,11 +212,11 @@
 "Copy_Path" = "复制目录";
 
 "After_Install_Relaunch" = "重启 Sileo";
-"After_Install_Respring" = "重启 SpringBoard";
-"After_Install_Reboot" = "重启设备";
+"After_Install_Respring" = "注销";
+"After_Install_Reboot" = "重启用户空间";
 "After_Install_Relaunch_Later" = "稍后重启 Sileo";
-"After_Install_Respring_Later" = "稍后重启 SpringBoard";
-"After_Install_Reboot_Later" = "稍后重启设备";
+"After_Install_Respring_Later" = "稍后注销";
+"After_Install_Reboot_Later" = "稍后重启用户空间";
 
 "Dangerous_Repo.Title" = "危险的插件源";
 "Dangerous_Repo.Body" = "您正在添加一个可能因为含有盗版行为，违法内容，病毒而被标记的插件源。\n\n被标记的插件源可能经常发布许多转载的插件包（包括许多免费和收费的插件包）。这些插件包可能会影响到您的隐私和设备，有时可能会影响到越狱环境。我们建议您提高谨慎以远离有害插件包。";

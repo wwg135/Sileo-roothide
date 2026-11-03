@@ -210,11 +210,11 @@
 "Copy_Path" = "拷貝目錄";
 
 "After_Install_Relaunch" = "重新啟動 Sileo";
-"After_Install_Respring" = "重新啟動主畫面";
-"After_Install_Reboot" = "重新啟動裝置";
+"After_Install_Respring" = "登出";
+"After_Install_Reboot" = "重新啟動使用者空間";
 "After_Install_Relaunch_Later" = "稍後重新啟動 Sileo";
-"After_Install_Respring_Later" = "稍後重新啟動主畫面";
-"After_Install_Reboot_Later" = "稍後重新啟動裝置";
+"After_Install_Respring_Later" = "稍後登出";
+"After_Install_Reboot_Later" = "稍後重新啟動使用者空間";
 
 "Dangerous_Repo.Title" = "危險來源";
 "Dangerous_Repo.Body" = "您正在新增一個可能因為含有盜版行為、違法內容或病毒而被標記的套件來源。\n\n被標記的套件來源經常發布許多轉載的套件（包括許多免費和收費的套件）。這些套件可能會影響到您的隱私和裝置，甚至越獄狀態。我們建議您提高警覺並遠離有害的套件。";
