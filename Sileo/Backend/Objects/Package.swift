@@ -33,6 +33,8 @@ final class Package: PackageProtocol {
     public var installedSize: Int?
     public var tags: PackageTags = .none
     public var origArchitecture: String?
+    // source a locally converted package was originally downloaded from
+    public var originalSourceFile: String?
     
     public func allVersions(ignoreArch: Bool = false) -> [Package] {
         if let repo = self.sourceRepo {
@@ -97,3 +99,30 @@ final class Package: PackageProtocol {
     }
 }
 
+
+// Remembers which source an installed package was installed from, since dpkg's status file doesn't
+enum InstalledSourceStore {
+    private static let key = "InstalledPackageSources"
+
+    private static var records: [String: [String: String]] {
+        UserDefaults.standard.dictionary(forKey: key) as? [String: [String: String]] ?? [:]
+    }
+
+    static func record(_ package: Package) {
+        guard let source = package.sourceFile ?? package.originalSourceFile else { return }
+        var all = records
+        all[package.package] = ["version": package.version, "source": source]
+        UserDefaults.standard.set(all, forKey: key)
+    }
+
+    static func remove(identifier: String) {
+        var all = records
+        guard all.removeValue(forKey: identifier) != nil else { return }
+        UserDefaults.standard.set(all, forKey: key)
+    }
+
+    static func source(identifier: String, version: String) -> String? {
+        guard let entry = records[identifier], entry["version"] == version else { return nil }
+        return entry["source"]
+    }
+}

@@ -569,6 +569,8 @@ class DownloadsTableViewController: SileoViewController {
         
         TabBarController.singleton?.updatePopup()
 
+        let installedToRecord = (installations + upgrades + installdeps).map { $0.package }
+        let removedToForget = (uninstallations + uninstalldeps).map { $0.package.package }
         APTWrapper.performOperations(installs: installations + upgrades, removals: uninstallations, installDeps: installdeps, progressCallback: { _, statusValid, statusReadable, package in
             NSLog("SileoLog: progressCallback \(statusValid) \(package) \(statusReadable)")
             if statusValid {
@@ -603,6 +605,10 @@ class DownloadsTableViewController: SileoViewController {
             }
         }, completionCallback: { status, finish, refresh in
             NSLog("SileoLog: apt completionCallback \(status) \(finish) \(refresh)")
+            if status == 0 {
+                installedToRecord.forEach { InstalledSourceStore.record($0) }
+                removedToForget.forEach { InstalledSourceStore.remove(identifier: $0) }
+            }
             PackageListManager.shared.reloadInstalled()
             DispatchQueue.main.async {
                 

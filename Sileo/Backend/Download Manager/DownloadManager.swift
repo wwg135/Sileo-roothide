@@ -328,6 +328,7 @@ final class DownloadManager {
                     throw RootlessConverter.Failure.step(String(localizationKey: "Compat_Convert_Failed"), "")
                 }
                 newPackage.origArchitecture = package.architecture
+                newPackage.originalSourceFile = package.sourceFile ?? package.originalSourceFile
                 converted = newPackage
             } catch {
                 NSLog("SileoLog: convertDownloaded failed \(error)")
@@ -925,6 +926,7 @@ final class DownloadManager {
                         return
                     }
                     newPackage.origArchitecture = package.architecture
+                    newPackage.originalSourceFile = package.sourceFile ?? package.originalSourceFile
                     self.add(package: newPackage, queue: .installations) {
                         self.reloadData(recheckPackages: true)
                     }

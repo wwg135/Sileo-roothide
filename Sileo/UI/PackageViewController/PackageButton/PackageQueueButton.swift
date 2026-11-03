@@ -125,8 +125,11 @@ class PackageQueueButton: PackageButton {
             var title = String(localizationKey: "Package_Reinstall_Action")
             var image = "arrow.clockwise.circle"
             var queue = DownloadManagerQueue.installations
+            var ambiguous = false
             if package.fromStatusFile || package.version == installed.version {
-                target = downloadablePackage(for: package)
+                let resolved = resolveDownloadable(for: package)
+                target = resolved.package
+                ambiguous = resolved.ambiguous
             } else if DpkgWrapper.isVersion(package.version, greaterThan: installed.version) {
                 target = package
                 title = String(localizationKey: "Package_Upgrade_Action")
@@ -140,7 +143,13 @@ class PackageQueueButton: PackageButton {
             if let target = target {
                 items.append((title, image, false, {
                     self.hapticResponse()
-                    self.requestQueuePackage(package: target, queue: queue)
+                    if ambiguous {
+                        // several sources match equally; let the user pick which one to reinstall from
+                        self.useVisiblePresenter()
+                        self.showVersionPrompt(nil)
+                    } else {
+                        self.requestQueuePackage(package: target, queue: queue)
+                    }
                 }))
             }
             items.append((String(localizationKey: "Package_Uninstall_Action"), "trash.circle", true, {
@@ -168,18 +177,27 @@ class PackageQueueButton: PackageButton {
         return items
     }
 
-    // Installed (dpkg status) entries have no filename/repo, so resolve the same version from the sources
-    private func downloadablePackage(for package: Package) -> Package? {
+    // Installed (dpkg status) entries have no filename/repo, so resolve the same version from the sources.
+    // `ambiguous` means several sources fit equally well and the user should choose.
+    private func resolveDownloadable(for package: Package) -> (package: Package?, ambiguous: Bool) {
         if package.local_deb != nil || (package.filename != nil && package.sourceRepo != nil) {
-            return package
+            return (package, false)
         }
         var candidates: [Package] = []
         for repo in RepoManager.shared.repoList {
             candidates += repo.allVersions(identifier: package.package, ignoreArch: true)
                 .filter { $0.version == package.version && $0.filename != nil }
         }
-        // The status file doesn't record which source an installed package came from, so pick the candidate
-        // whose control fields best match what is installed (installed-size is the strongest signal)
+        if let recorded = InstalledSourceStore.source(identifier: package.package, version: package.version) {
+            let matches = candidates.filter { $0.sourceFile == recorded }
+            if let best = matches.first(where: { $0.architecture == package.architecture }) ?? matches.first {
+                return (best, false)
+            }
+        }
+        if candidates.count <= 1 {
+            return (candidates.first, false)
+        }
+        // No record (installed before tracking or outside Sileo): compare control fields with what is installed
         func score(_ candidate: Package) -> Int {
             var points = 0
             if let size = package.installedSize, size == candidate.installedSize { points += 8 }
@@ -189,13 +207,14 @@ class PackageQueueButton: PackageButton {
             if candidate.section == package.section { points += 1 }
             return points
         }
-        var best: Package?
-        var bestScore = -1
-        for candidate in candidates where score(candidate) > bestScore {
-            best = candidate
-            bestScore = score(candidate)
-        }
-        return best
+        let ranked = candidates.map { (package: $0, score: score($0)) }.sorted { $0.score > $1.score }
+        let top = ranked[0]
+        let tied = ranked.filter { $0.score == top.score && $0.package.sourceFile != top.package.sourceFile }
+        return (top.package, !tied.isEmpty)
+    }
+
+    private func downloadablePackage(for package: Package) -> Package? {
+        resolveDownloadable(for: package).package
     }
 
     private func setIgnoreUpdates(_ ignore: Bool, package installed: Package) {
