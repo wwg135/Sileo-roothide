@@ -859,6 +859,9 @@ class PackageViewController: SileoViewController, PackageQueueButtonDataProvider
     }
 
     func configureVersionSelectionNavigationController(_ navigationController: UINavigationController?) {
-        downloadButton.versionSelectionNavigationController = navigationController
+        // the outlets only exist once the view has loaded
+        loadViewIfNeeded()
+        downloadButton?.versionSelectionNavigationController = navigationController
+        navBarDownloadButton?.versionSelectionNavigationController = navigationController
     }
 }
