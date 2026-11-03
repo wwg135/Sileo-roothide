@@ -102,6 +102,8 @@ enum RootlessConverter {
         let archiveOwners = readArchiveOwners(of: deb)
         let owner = "\(getuid()):\(getgid())"
         try run(CommandPath.chown, ["chown", "-R", owner, rootfs(old.path)], root: true)
+        // some packages ship DEBIAN entries without owner read/search bits; the original modes are already recorded
+        try run(CommandPath.chmod, ["chmod", "-R", "u+rwX", rootfs(old.path)], root: true)
 
         let controlURL = old.appendingPathComponent("DEBIAN/control")
         let control = try readText(controlURL)
