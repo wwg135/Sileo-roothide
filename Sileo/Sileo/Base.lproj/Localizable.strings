@@ -251,10 +251,11 @@
 "Compat_Converting" = "Preparing…";
 "Compat_Convert_Failed" = "Conversion Failed";
 "Compat_Not_Convertible" = "This package cannot be converted automatically.\n\nPlease contact its developer to update it for roothide.";
-"Compat_Disabled_Message" = "%@\n\nThis package has not been updated for roothide. You can contact its developer, or turn on Compatibility Mode Update in Settings to convert it automatically.";
+"Compat_Disabled_Message" = "This package has not been updated for roothide. You can contact its developer, or turn on Compatibility Mode Update in Settings to convert it automatically.";
 "Compat_Unsupported_Arch" = "%@ packages cannot be converted.";
 "Compat_Tool_Missing" = "The required tool \"%@\" is not installed.";
-"Compat_Not_Updated_Message" = "%@\n\nThis package has not been updated for roothide and cannot be converted automatically. Please contact its developer.";
+"Compat_Not_Updated_Message" = "This package has not been updated for roothide and cannot be converted automatically. Please contact its developer.";
+"Not_Supported" = "Not Supported";
 "Package_Architecture" = "Architecture: %@";
 "Package_Choose_Version" = "Choose Version…";
 "Package_Select_Version" = "Select Version";

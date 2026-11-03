@@ -250,10 +250,11 @@
 "Compat_Converting" = "正在准备…";
 "Compat_Convert_Failed" = "转换失败";
 "Compat_Not_Convertible" = "此插件包无法自动转换。\n\n请联系开发者适配 roothide。";
-"Compat_Disabled_Message" = "%@\n\n此插件包尚未适配 roothide。你可以联系开发者，或在设置中开启“兼容模式更新”以自动转换。";
+"Compat_Disabled_Message" = "此插件包尚未适配 roothide。你可以联系开发者，或在设置中开启“兼容模式更新”以自动转换。";
 "Compat_Unsupported_Arch" = "不支持转换 %@ 架构的插件包。";
 "Compat_Tool_Missing" = "缺少所需工具“%@”，请先安装。";
-"Compat_Not_Updated_Message" = "%@\n\n此插件包尚未适配 roothide，且无法自动转换，请联系开发者。";
+"Compat_Not_Updated_Message" = "此插件包尚未适配 roothide，且无法自动转换，请联系开发者。";
+"Not_Supported" = "不支持";
 "Package_Architecture" = "架构：%@";
 "Package_Choose_Version" = "选择版本";
 "Package_Select_Version" = "选择版本";

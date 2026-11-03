@@ -1110,15 +1110,14 @@ final class DownloadManager {
                         return
                     }
                     
-                    let title = String(localizationKey: "Not Updated")
-                    let name = "\(package.package)(\(package.version))"
+                    let title = String(localizationKey: "Not_Supported")
                     let msg: String
                     if IncompatibleRepo {
                         msg = String(localizationKey: "please contact @roothideDev to update it")
                     } else if !convertible {
-                        msg = String(format: String(localizationKey: "Compat_Not_Updated_Message"), name)
+                        msg = String(localizationKey: "Compat_Not_Updated_Message")
                     } else {
-                        msg = String(format: String(localizationKey: "Compat_Disabled_Message"), name)
+                        msg = String(localizationKey: "Compat_Disabled_Message")
                     }
                     
                     let alert = UIAlertController(title: title, message: msg, preferredStyle: .alert)
