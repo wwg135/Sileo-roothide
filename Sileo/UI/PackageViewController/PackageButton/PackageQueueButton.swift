@@ -209,7 +209,7 @@ class PackageQueueButton: PackageButton {
 
         guard !sections.isEmpty else { return }
         let installedVersion = PackageListManager.shared.installedPackage(identifier: package.package)?.version
-        let picker = PackageVersionPickerController(sections: sections, installedVersion: installedVersion) { [weak self] selected in
+        let picker = PackageVersionPickerController(sections: sections, installedVersion: installedVersion, current: package) { [weak self] selected in
             guard let self = self, let viewController = self.viewControllerForPresentation else { return }
             if let packageViewController = viewController as? PackageViewController {
                 packageViewController.show(package: selected)
@@ -680,11 +680,13 @@ private final class PackageQueueMenuDelegate: NSObject, UIContextMenuInteraction
 private final class PackageVersionPickerController: UITableViewController {
     private let sections: [(title: String, packages: [Package])]
     private let installedVersion: String?
+    private let current: Package
     private let onPick: (Package) -> Void
 
-    init(sections: [(title: String, packages: [Package])], installedVersion: String?, onPick: @escaping (Package) -> Void) {
+    init(sections: [(title: String, packages: [Package])], installedVersion: String?, current: Package, onPick: @escaping (Package) -> Void) {
         self.sections = sections
         self.installedVersion = installedVersion
+        self.current = current
         self.onPick = onPick
         super.init(style: .grouped)
     }
@@ -720,14 +722,19 @@ private final class PackageVersionPickerController: UITableViewController {
     }
 
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "Version", for: indexPath)
+        let cell = UITableViewCell(style: .value1, reuseIdentifier: nil)
         let package = sections[indexPath.section].packages[indexPath.row]
         cell.textLabel?.text = package.version
-        let isInstalled = package.version == installedVersion
-        cell.accessoryType = isInstalled ? .checkmark : .none
-        cell.tintColor = isInstalled ? .systemGreen : nil
+        cell.detailTextLabel?.text = package.version == installedVersion ? String(localizationKey: "Installed_Package_Header") : nil
+        cell.accessoryType = isCurrent(package) ? .checkmark : .none
         cell.backgroundColor = .clear
         return cell
+    }
+
+    // The checkmark follows the version the page currently shows; an installed-list page has no repo, so it matches by version only
+    private func isCurrent(_ package: Package) -> Bool {
+        guard package.version == current.version else { return false }
+        return current.sourceRepo == nil || package.sourceRepo == current.sourceRepo
     }
 
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
