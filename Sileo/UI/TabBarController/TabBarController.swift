@@ -45,6 +45,10 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                                                name: SileoThemeManager.sileoChangedThemeNotification,
                                                object: nil)
         updateSileoColors()
+        NotificationCenter.default.addObserver(self,
+                                               selector: #selector(floatingTabBarChanged),
+                                               name: Notification.Name("FloatingTabBar"),
+                                               object: nil)
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -304,9 +308,52 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 tabBarFrame.size.width -= 320
             }
         }
+        if isFloatingEnabled {
+            return floatingTabBarFrame(for: tabBarFrame)
+        }
         return tabBarFrame
     }
     
+    private var floatingInset: CGFloat { 16 }
+
+    private var isFloatingEnabled: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone && UserDefaults.standard.bool(forKey: "FloatingTabBar", fallback: false)
+    }
+
+    @objc private func floatingTabBarChanged() {
+        self.view.setNeedsLayout()
+        self.view.layoutIfNeeded()
+        self.updatePopup(animated: false)
+    }
+
+    private func applyFloatingStyle() {
+        let layer = self.tabBar.layer
+        guard isFloatingEnabled else {
+            layer.cornerRadius = 0
+            layer.shadowOpacity = 0
+            return
+        }
+        layer.cornerRadius = 24
+        layer.cornerCurve = .continuous
+        layer.masksToBounds = false
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.2
+        layer.shadowRadius = 10
+        layer.shadowOffset = CGSize(width: 0, height: 4)
+        let floatingFrame = floatingTabBarFrame(for: self.tabBar.frame)
+        if self.tabBar.frame != floatingFrame {
+            self.tabBar.frame = floatingFrame
+        }
+    }
+
+    private func floatingTabBarFrame(for frame: CGRect) -> CGRect {
+        var result = frame
+        result.origin.x = floatingInset
+        result.size.width = self.view.bounds.width - floatingInset * 2
+        result.origin.y = self.view.bounds.height - frame.height - 8
+        return result
+    }
+
     override var insetsForBottomDockingView: UIEdgeInsets {
         if UIDevice.current.userInterfaceIdiom == .pad {
             if self.view.bounds.width < ipadModeMinWidth {
@@ -336,6 +383,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         super.viewDidLayoutSubviews()
         
         self.tabBar.itemPositioning = .centered
+        applyFloatingStyle()
         if UIDevice.current.userInterfaceIdiom == .pad {
             self.updatePopup(animated: false)
         }

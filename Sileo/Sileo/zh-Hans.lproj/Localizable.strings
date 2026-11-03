@@ -289,3 +289,4 @@
 "Conflict_Recommends" = "推荐";
 "Conflict_Conflicts" = "冲突";
 "Conflict_Replaces" = "替换";
+"Floating_Tab_Bar" = "悬浮底栏";
