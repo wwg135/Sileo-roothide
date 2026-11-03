@@ -1120,7 +1120,7 @@ final class DownloadManager {
                         msg = String(localizationKey: "Compat_Disabled_Message")
                     }
                     
-                    let alert = UIAlertController(title: title, message: msg, preferredStyle: .alert)
+                    let alert = UIAlertController(title: title, message: "\n" + msg, preferredStyle: .alert)
                     
                     let okAction = UIAlertAction(title: (package.sourceRepo?.url?.host == "apt.procurs.us") ? String(localizationKey: "OK") : String(localizationKey: "Cancel"), style: .cancel) { _ in
                         alert.dismiss(animated: true, completion: nil)
