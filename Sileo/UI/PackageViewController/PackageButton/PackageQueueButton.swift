@@ -191,34 +191,7 @@ class PackageQueueButton: PackageButton {
         if package.local_deb != nil || (package.filename != nil && package.sourceRepo != nil) {
             return (package, false)
         }
-        var candidates: [Package] = []
-        for repo in RepoManager.shared.repoList {
-            candidates += repo.allVersions(identifier: package.package, ignoreArch: true)
-                .filter { $0.version == package.version && $0.filename != nil }
-        }
-        if let recorded = InstalledSourceStore.source(identifier: package.package, version: package.version) {
-            let matches = candidates.filter { $0.sourceFile == recorded }
-            if let best = matches.first(where: { $0.architecture == package.architecture }) ?? matches.first {
-                return (best, false)
-            }
-        }
-        if candidates.count <= 1 {
-            return (candidates.first, false)
-        }
-        // No record (installed before tracking or outside Sileo): compare control fields with what is installed
-        func score(_ candidate: Package) -> Int {
-            var points = 0
-            if let size = package.installedSize, size == candidate.installedSize { points += 8 }
-            if candidate.architecture == package.architecture { points += 4 }
-            if candidate.name == package.name { points += 1 }
-            if candidate.description == package.description { points += 1 }
-            if candidate.section == package.section { points += 1 }
-            return points
-        }
-        let ranked = candidates.map { (package: $0, score: score($0)) }.sorted { $0.score > $1.score }
-        let top = ranked[0]
-        let tied = ranked.filter { $0.score == top.score && $0.package.sourceFile != top.package.sourceFile }
-        return (top.package, !tied.isEmpty)
+        return PackageListManager.shared.installedOrigin(of: package)
     }
 
     private func downloadablePackage(for package: Package) -> Package? {

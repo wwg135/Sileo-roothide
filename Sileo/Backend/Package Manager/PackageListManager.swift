@@ -128,13 +128,45 @@ final class PackageListManager {
         repoInstallChange()
     }
 
+    // The source package an installed package came from: the recorded source, else the best match among the
+    // sources carrying the same version. `ambiguous` means several sources fit equally well.
+    public func installedOrigin(of package: Package) -> (package: Package?, ambiguous: Bool) {
+        var candidates: [Package] = []
+        for repo in RepoManager.shared.repoList {
+            candidates += repo.allVersions(identifier: package.package, ignoreArch: true)
+                .filter { $0.version == package.version && $0.filename != nil }
+        }
+        if let recorded = InstalledSourceStore.source(identifier: package.package, version: package.version) {
+            let matches = candidates.filter { $0.sourceFile == recorded }
+            if let best = matches.first(where: { $0.architecture == package.architecture }) ?? matches.first {
+                return (best, false)
+            }
+        }
+        if candidates.count <= 1 {
+            return (candidates.first, false)
+        }
+        func score(_ candidate: Package) -> Int {
+            var points = 0
+            if let size = package.installedSize, size == candidate.installedSize { points += 8 }
+            if candidate.architecture == package.architecture { points += 4 }
+            if candidate.name == package.name { points += 1 }
+            if candidate.description == package.description { points += 1 }
+            if candidate.section == package.section { points += 1 }
+            return points
+        }
+        let ranked = candidates.map { (package: $0, score: score($0)) }.sorted { $0.score > $1.score }
+        let top = ranked[0]
+        let tied = ranked.filter { $0.score == top.score && $0.package.sourceFile != top.package.sourceFile }
+        return (top.package, !tied.isEmpty)
+    }
+
     // An installed package is updated from the source it was installed from; without a record (or when that
     // source is gone) every source is considered
     public func updateCandidate(for installed: Package) -> Package? {
-        if let source = InstalledSourceStore.source(identifier: installed.package, version: installed.version),
-           let repo = RepoManager.shared.repo(withSourceFile: source),
-           let origin = repo.newestPackage(identifier: installed.package) {
-            return origin
+        let origin = installedOrigin(of: installed)
+        if !origin.ambiguous, let repo = origin.package?.sourceRepo,
+           let newest = repo.newestPackage(identifier: installed.package) {
+            return newest
         }
         return self.newestPackage(identifier: installed.package, repoContext: nil)
     }
