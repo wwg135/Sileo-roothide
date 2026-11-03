@@ -47,6 +47,7 @@ class DownloadsTableViewController: SileoViewController {
     private var returnButtonAction: APTWrapper.FINISH = .back
     private var refreshSileo = false
     private var hasErrored = false
+    private var inForcedRemovalWarning = false
     private var detailsAttributedString: NSMutableAttributedString?
     
     public var backgroundCallback: (() -> Void)?
@@ -541,6 +542,22 @@ class DownloadsTableViewController: SileoViewController {
         queueCompleted()
     }
     
+    /// True if every non-empty line of a stderr chunk belongs to a dpkg "dependency problems, but removing anyway" block.
+    private func isForcedRemovalWarning(_ output: String) -> Bool {
+        var onlyWarnings = true
+        for line in output.components(separatedBy: "\n") where !line.isEmpty {
+            if line.contains("dependency problems, but removing anyway") {
+                inForcedRemovalWarning = true
+            } else if inForcedRemovalWarning && (line.hasPrefix(" ") || line.hasPrefix("\t")) {
+                continue
+            } else {
+                inForcedRemovalWarning = false
+                onlyWarnings = false
+            }
+        }
+        return onlyWarnings
+    }
+
     private func transform(attributedString: NSMutableAttributedString) -> NSMutableAttributedString {
         let font = UIFont(name: "Menlo-Regular", size: 12) ?? UIFont.systemFont(ofSize: 12)
         
@@ -580,8 +597,13 @@ class DownloadsTableViewController: SileoViewController {
             NSLog("SileoLog: apt outputCallback \(pipe):\(output)")
             var textColor = Dusk.foregroundColor
             if pipe == STDERR_FILENO {
-                textColor = Dusk.errorColor
-                self.hasErrored = true
+                if self.isForcedRemovalWarning(output) {
+                    // dpkg warns when swapping mutually exclusive providers (e.g. libhooker <-> ellekit)
+                    textColor = Dusk.warningColor
+                } else {
+                    textColor = Dusk.errorColor
+                    self.hasErrored = true
+                }
             }
             if pipe == APTWrapper.debugFD {
                 textColor = Dusk.debugColor
