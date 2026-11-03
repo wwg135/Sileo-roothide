@@ -314,7 +314,8 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         return tabBarFrame
     }
     
-    private var floatingInset: CGFloat { 16 }
+    private var floatingInset: CGFloat { 12 }
+    private var floatingRetryCount = 0
     private var floatingBackground: UIView?
     private var originalStandardAppearance: UITabBarAppearance?
     private var originalScrollEdgeAppearance: UITabBarAppearance?
@@ -366,19 +367,33 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         }
         guard let container = floatingBackground, let blur = container.viewWithTag(1) else { return }
         let barHeight: CGFloat = 72
-        // Center the capsule on the actual item row so top/bottom spacing is equal
-        var buttons: [UIView] = []
+        // Center the capsule on the visible icon+label row so top/bottom spacing is equal
+        var rowMids: [CGFloat] = []
         func collect(_ view: UIView) {
             for sub in view.subviews {
                 if String(describing: type(of: sub)).contains("TabBarButton") {
-                    buttons.append(sub)
+                    let content = sub.subviews.filter { $0 is UIImageView || $0 is UILabel || String(describing: type(of: $0)).contains("ImageView") }
+                    let union = content.reduce(CGRect.null) { $0.union($1.frame) }
+                    let rect = union.isNull ? sub.bounds : union
+                    rowMids.append(self.tabBar.convert(rect, from: sub).midY)
                 } else {
                     collect(sub)
                 }
             }
         }
         collect(self.tabBar)
-        let itemMidY = buttons.isEmpty ? 24.5 : buttons.map { self.tabBar.convert($0.bounds, from: $0).midY }.reduce(0, +) / CGFloat(buttons.count)
+        guard !rowMids.isEmpty else {
+            // Buttons are not laid out yet (cold launch); hide the capsule and retry shortly
+            container.isHidden = true
+            if floatingRetryCount < 20 {
+                floatingRetryCount += 1
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in self?.applyFloatingStyle() }
+            }
+            return
+        }
+        floatingRetryCount = 0
+        container.isHidden = false
+        let itemMidY = rowMids.reduce(0, +) / CGFloat(rowMids.count)
         let frame = CGRect(x: floatingInset, y: itemMidY - barHeight / 2, width: self.tabBar.bounds.width - floatingInset * 2, height: barHeight)
         container.frame = frame
         blur.frame = container.bounds
@@ -386,12 +401,14 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         container.layer.shadowPath = UIBezierPath(roundedRect: container.bounds, cornerRadius: barHeight / 2).cgPath
         self.tabBar.sendSubviewToBack(container)
 
+        // Pitch between items is itemWidth + itemSpacing; make five items span the whole capsule
         let count = CGFloat(max(self.tabBar.items?.count ?? 1, 1))
-        let itemWidth = ((frame.width - 8) / count).rounded(.down)
+        let spacing: CGFloat = 1
+        let itemWidth = (frame.width / count - spacing).rounded(.down)
         if self.tabBar.itemWidth != itemWidth {
             self.tabBar.itemWidth = itemWidth
         }
-        if self.tabBar.itemSpacing != 0 { self.tabBar.itemSpacing = 0 }
+        if self.tabBar.itemSpacing != spacing { self.tabBar.itemSpacing = spacing }
         if self.tabBar.itemPositioning != .centered { self.tabBar.itemPositioning = .centered }
     }
 
