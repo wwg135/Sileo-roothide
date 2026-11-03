@@ -59,3 +59,11 @@
 "Purchase_Auth_Complete_Fail.Title" = "Couldn't Complete Authentication";
 
 "Couldnt_Import_Themes" = "Couldn't Import theme(s)";
+
+"APT_Package_Not_Found" = "APT was unable to find this package. Please try refreshing your sources\n\n%@";
+"APT_Invalid_Response" = "APT returned an invalid response that cannot be parsed.\n\n%@";
+"APT_Sileo_Incomplete" = "Your Sileo install is incomplete. Please reinstall";
+"APT_Blank_Request" = "Internal Error: Blank Request sent for packages";
+"APT_Uninstall_Mismatch" = "Uninstall Identifiers Mismatch";
+"APT_Install_Mismatch" = "Install Identifier Mismatch for Identifiers";
+"Queue_Locked_During_Install" = "Packages cannot be added to the queue during install";

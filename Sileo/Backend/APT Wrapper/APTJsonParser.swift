@@ -16,10 +16,10 @@ enum APTParserErrors: LocalizedError {
     
     var errorDescription: String? {
         switch self {
-        case .blankJsonOutput(let error): return "APT was unable to find this package. Please try refreshing your sources\n\n\(error)"
-        case .failedDataEncoding(let data): return "APT returned an invalid response that cannot be parsed.\n\n\(data ?? "")"
-        case .missingSileoConf: return "Your Sileo install is incomplete. Please reinstall"
-        case .blankRequest: return "Internal Error: Blank Request sent for packages"
+        case .blankJsonOutput(let error): return String(format: String(localizationKey: "APT_Package_Not_Found", type: .error), error)
+        case .failedDataEncoding(let data): return String(format: String(localizationKey: "APT_Invalid_Response", type: .error), data ?? "")
+        case .missingSileoConf: return String(localizationKey: "APT_Sileo_Incomplete", type: .error)
+        case .blankRequest: return String(localizationKey: "APT_Blank_Request", type: .error)
         }
     }
 }
@@ -86,6 +86,16 @@ struct APTBrokenPackage: Decodable, Hashable {
             case conflicts = "Conflicts"
             case replaces = "Replaces"
             case depends = "Depends"
+            
+            var localizedName: String {
+                switch self {
+                case .preDepends: return String(localizationKey: "Conflict_PreDepends")
+                case .recommends: return String(localizationKey: "Conflict_Recommends")
+                case .conflicts: return String(localizationKey: "Conflict_Conflicts")
+                case .replaces: return String(localizationKey: "Conflict_Replaces")
+                case .depends: return String(localizationKey: "Conflict_Depends")
+                }
+            }
         }
 
         // swiftlint:disable nesting

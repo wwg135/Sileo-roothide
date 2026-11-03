@@ -262,3 +262,24 @@
 "Package_Download_Deb" = "Download Package File";
 "Package_View_Info" = "View Package Info";
 "Package_Downloading" = "Downloading…";
+
+/* Install flow */
+"Updating_Icon_Cache" = "Updating Icon Cache";
+"No_RootHide_Packages" = "No RootHide Package(s)";
+"Bad_Deb_Title" = "Bad Deb";
+"Bad_Deb_Message" = "The provided deb file could not be read";
+"Xina_Unsupported_Title" = "XinaA15 no longer supported";
+"Xina_Unsupported_Message" = "XinaA15 is no longer supported by Sileo, as recent changes make it impossible for Sileo to support XinaA15 in a functional manner. Please remove XinaA15 and switch to Fugu15 Max.";
+"Xina_Unsupported_Guide" = "Guide";
+"Compat_Reading_Metadata" = "Reading package metadata";
+"Compat_Metadata_Enumerate_Failed" = "Unable to enumerate extracted package";
+"Compat_Metadata_Permissions_Failed" = "Unable to read permissions or ownership for %@";
+"Compat_MachO_Malformed" = "Malformed Mach-O file";
+"Compat_MachO_No_Room" = "No room in the Mach-O header for the new load commands";
+
+/* Dependency conflict types shown in the queue */
+"Conflict_Depends" = "Depends";
+"Conflict_PreDepends" = "PreDepends";
+"Conflict_Recommends" = "Recommends";
+"Conflict_Conflicts" = "Conflicts";
+"Conflict_Replaces" = "Replaces";

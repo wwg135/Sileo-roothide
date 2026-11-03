@@ -317,8 +317,8 @@ class SileoAppDelegate: UIResponder, UIApplicationDelegate, UITabBarControllerDe
                             try FileManager.default.copyItem(at: url, to: newurl)
                         } catch {
                             NSLog("SileoLog: failed to stage deb: \(error)")
-                            let alert = UIAlertController(title: "Bad Deb", message: "The provided deb file could not be read", preferredStyle: .alert)
-                            alert.addAction(UIAlertAction(title: "Ok", style: .cancel))
+                            let alert = UIAlertController(title: String(localizationKey: "Bad_Deb_Title"), message: String(localizationKey: "Bad_Deb_Message"), preferredStyle: .alert)
+                            alert.addAction(UIAlertAction(title: String(localizationKey: "OK"), style: .cancel))
                             self.window?.rootViewController?.present(alert, animated: true, completion: nil)
                             return
                         }
@@ -328,8 +328,8 @@ class SileoAppDelegate: UIResponder, UIApplicationDelegate, UITabBarControllerDe
                         }
                         
                         guard let package = PackageListManager.shared.package(url: newurl) else {
-                            let alert = UIAlertController(title: "Bad Deb", message: "The provided deb file could not be read", preferredStyle: .alert)
-                            alert.addAction(UIAlertAction(title: "Ok", style: .cancel))
+                            let alert = UIAlertController(title: String(localizationKey: "Bad_Deb_Title"), message: String(localizationKey: "Bad_Deb_Message"), preferredStyle: .alert)
+                            alert.addAction(UIAlertAction(title: String(localizationKey: "OK"), style: .cancel))
                             self.window?.rootViewController?.present(alert, animated: true, completion: nil)
                             return
                         }

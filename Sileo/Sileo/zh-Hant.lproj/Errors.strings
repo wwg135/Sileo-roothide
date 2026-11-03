@@ -59,3 +59,11 @@
 "Purchase_Auth_Complete_Fail.Title" = "無法完成驗證";
 
 "Couldnt_Import_Themes" = "無法滙入主題";
+
+"APT_Package_Not_Found" = "APT 找不到此套件，請嘗試重新整理來源\n\n%@";
+"APT_Invalid_Response" = "APT 傳回了無法解析的回應\n\n%@";
+"APT_Sileo_Incomplete" = "Sileo 安裝不完整，請重新安裝";
+"APT_Blank_Request" = "內部錯誤：傳送了空的套件請求";
+"APT_Uninstall_Mismatch" = "解除安裝的套件識別碼不相符";
+"APT_Install_Mismatch" = "安裝的套件識別碼不相符";
+"Queue_Locked_During_Install" = "安裝過程中無法將套件加入佇列";

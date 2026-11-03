@@ -225,7 +225,7 @@ enum RootlessConverter {
 
     private static func readMetadata(at root: URL) throws -> [FileMetadata] {
         guard let enumerator = FileManager.default.enumerator(atPath: root.path) else {
-            throw Failure.step("Reading package metadata", "Unable to enumerate extracted package")
+            throw Failure.step(String(localizationKey: "Compat_Reading_Metadata"), String(localizationKey: "Compat_Metadata_Enumerate_Failed"))
         }
 
         var metadata: [FileMetadata] = []
@@ -238,7 +238,7 @@ enum RootlessConverter {
                   let owner = (attributes[.ownerAccountID] as? NSNumber)?.uint32Value,
                   let group = (attributes[.groupOwnerAccountID] as? NSNumber)?.uint32Value
             else {
-                throw Failure.step("Reading package metadata", "Unable to read permissions or ownership for \(relative)")
+                throw Failure.step(String(localizationKey: "Compat_Reading_Metadata"), String(format: String(localizationKey: "Compat_Metadata_Permissions_Failed"), relative))
             }
 
             metadata.append(FileMetadata(relativePath: relative,

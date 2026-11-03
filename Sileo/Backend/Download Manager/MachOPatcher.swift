@@ -21,8 +21,8 @@ enum MachOPatcher {
 
         var errorDescription: String? {
             switch self {
-            case .malformed: return "Malformed Mach-O file"
-            case .noRoom: return "No room in the Mach-O header for the new load commands"
+            case .malformed: return String(localizationKey: "Compat_MachO_Malformed")
+            case .noRoom: return String(localizationKey: "Compat_MachO_No_Room")
             }
         }
     }

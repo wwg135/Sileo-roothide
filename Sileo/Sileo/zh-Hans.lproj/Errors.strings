@@ -59,3 +59,11 @@
 "Purchase_Auth_Complete_Fail.Title" = "无法完成验证";
 
 "Couldnt_Import_Themes" = "无法导入主题";
+
+"APT_Package_Not_Found" = "APT 找不到此插件包，请尝试刷新插件源\n\n%@";
+"APT_Invalid_Response" = "APT 返回了无法解析的响应\n\n%@";
+"APT_Sileo_Incomplete" = "Sileo 安装不完整，请重新安装";
+"APT_Blank_Request" = "内部错误：发送了空的插件包请求";
+"APT_Uninstall_Mismatch" = "卸载的插件包标识不匹配";
+"APT_Install_Mismatch" = "安装的插件包标识不匹配";
+"Queue_Locked_During_Install" = "安装过程中无法向队列添加插件包";

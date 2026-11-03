@@ -26,9 +26,9 @@
 "Sileo_Team" = "Sileo 团队";
 "Warning" = "警告";
 "Edit" = "编辑";
-"Why" = "Why";
-"Deny" = "Deny";
-"Accept" = "Accept";
+"Why" = "为什么";
+"Deny" = "拒绝";
+"Accept" = "接受";
 
 // Popup messages
 "Background_App_Refresh" = "后台App刷新";
@@ -238,14 +238,14 @@
 "View_Depiction" = "查看介绍";
 
 "Copy_ID" = "复制 ID";
-"Canister_Policy" = "Canister Privacy Policy";
-"Download_Analytics" = "Download Analytics";
-"Provided_Canister" = "Provided by Canister";
-"Data_Collected" = "Data collected is used to update the featured page and various recommendation sources.";
-"Change_Later" = "You can always change your choice later.";
-"Whats_Collected" = "What's Collected";
-"Non_Identifying" = "Only package and non-identifying device information is collected.";
-"Privacy_Policy" = "Privacy Policy";
+"Canister_Policy" = "Canister 隐私政策";
+"Download_Analytics" = "下载统计";
+"Provided_Canister" = "由 Canister 提供";
+"Data_Collected" = "收集的数据将用于更新精选页面和各类推荐来源。";
+"Change_Later" = "你可以随时更改此选择。";
+"Whats_Collected" = "收集的内容";
+"Non_Identifying" = "仅收集插件包信息和不可识别身份的设备信息。";
+"Privacy_Policy" = "隐私政策";
 "Compatibility_Mode_Update" = "兼容模式更新";
 "Compat_Converting" = "正在准备…";
 "Compat_Convert_Failed" = "转换失败";
@@ -268,3 +268,24 @@
 "Twitter" = "推特";
 "Website" = "官网";
 "Support" = "支持";
+
+/* Install flow */
+"Updating_Icon_Cache" = "正在更新图标缓存";
+"No_RootHide_Packages" = "没有适配 RootHide 的插件包";
+"Bad_Deb_Title" = "安装包无效";
+"Bad_Deb_Message" = "无法读取所提供的 deb 文件";
+"Xina_Unsupported_Title" = "不再支持 XinaA15";
+"Xina_Unsupported_Message" = "由于近期的变更，Sileo 已无法正常支持 XinaA15，因此不再支持。请移除 XinaA15 并改用 Fugu15 Max。";
+"Xina_Unsupported_Guide" = "指南";
+"Compat_Reading_Metadata" = "读取插件包元数据";
+"Compat_Metadata_Enumerate_Failed" = "无法枚举已解压的插件包";
+"Compat_Metadata_Permissions_Failed" = "无法读取 %@ 的权限或所有者信息";
+"Compat_MachO_Malformed" = "Mach-O 文件已损坏";
+"Compat_MachO_No_Room" = "Mach-O 头部没有足够空间容纳新的加载命令";
+
+/* Dependency conflict types shown in the queue */
+"Conflict_Depends" = "依赖";
+"Conflict_PreDepends" = "预依赖";
+"Conflict_Recommends" = "推荐";
+"Conflict_Conflicts" = "冲突";
+"Conflict_Replaces" = "替换";

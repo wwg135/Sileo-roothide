@@ -41,7 +41,7 @@ final class DownloadManager {
             case let .untrustedPackage(packageID):
                 return String(format: String(localizationKey: "Untrusted_Package", type: .error), packageID)
             case .debugNotAllowed:
-                return "Packages cannot be added to the queue during install"
+                return String(localizationKey: "Queue_Locked_During_Install", type: .error)
             }
         }
     }
@@ -573,7 +573,7 @@ final class DownloadManager {
         guard rawUninstalls.count == uninstallIdentifiers.count else {
             rawUninstalls.map({NSLog("SileoLog: rawUninstalls=\($0.package) \($0.package)")})
             uninstallIdentifiers.map({NSLog("SileoLog: uninstallIdentifiers=\($0)")})
-            throw APTParserErrors.blankJsonOutput(error: "Uninstall Identifiers Mismatch")
+            throw APTParserErrors.blankJsonOutput(error: String(localizationKey: "APT_Uninstall_Mismatch", type: .error))
         }
         var uninstallDeps = Set<DownloadPackage>(rawUninstalls.compactMap { DownloadPackage(package: $0) })
         
@@ -630,7 +630,7 @@ final class DownloadManager {
         rawInstalls.map({NSLog("SileoLog: rawInstalls: \($0.package)=\($0.version) \($0.local_deb ?? $0.sourceRepo?.url)")})
 
         guard rawInstalls.count == installDepOperation.count else {
-            throw APTParserErrors.blankJsonOutput(error: "Install Identifier Mismatch for Identifiers")
+            throw APTParserErrors.blankJsonOutput(error: String(localizationKey: "APT_Install_Mismatch", type: .error))
         }
         var installDeps = Set<DownloadPackage>(rawInstalls.compactMap { DownloadPackage(package: $0) })
         var installations = self.vars.installations.raw
