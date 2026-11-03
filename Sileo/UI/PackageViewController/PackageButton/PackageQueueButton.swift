@@ -180,6 +180,28 @@ class PackageQueueButton: PackageButton {
         }
     }
 
+    // Context-menu previews are not in the view hierarchy, so present from what is actually on screen
+    private func useVisiblePresenter() {
+        guard viewControllerForPresentation?.view.window == nil else { return }
+        var top = UIApplication.shared.keyWindow?.rootViewController
+        while let presented = top?.presentedViewController {
+            top = presented
+        }
+        viewControllerForPresentation = top
+    }
+
+    private static func navigationController(containing controller: UIViewController) -> UINavigationController? {
+        var current: UIViewController? = controller
+        while let vc = current {
+            if let nav = vc as? UINavigationController { return nav }
+            if let nav = vc.navigationController { return nav }
+            if let tab = vc as? UITabBarController { current = tab.selectedViewController; continue }
+            if let split = vc as? UISplitViewController { current = split.viewControllers.last; continue }
+            return nil
+        }
+        return nil
+    }
+
     private func showPackageInfo(_ package: Package) {
         let controller = PackageControlInfoViewController(package: package)
         let navigation = UINavigationController(rootViewController: controller)
@@ -211,9 +233,9 @@ class PackageQueueButton: PackageButton {
         let installedVersion = PackageListManager.shared.installedPackage(identifier: package.package)?.version
         let picker = PackageVersionPickerController(sections: sections, installedVersion: installedVersion, current: package) { [weak self] selected in
             guard let self = self, let viewController = self.viewControllerForPresentation else { return }
-            if let packageViewController = viewController as? PackageViewController {
+            if let packageViewController = viewController as? PackageViewController, packageViewController.view.window != nil {
                 packageViewController.show(package: selected)
-            } else if let navigationController = viewController.navigationController {
+            } else if let navigationController = PackageQueueButton.navigationController(containing: viewController) {
                 navigationController.pushViewController(
                     NativePackageViewController.viewController(for: selected),
                     animated: true
@@ -387,6 +409,13 @@ class PackageQueueButton: PackageButton {
                 self.requestQueuePackage(package: package, queue: .installations)
             }
             actionItems.append(action)
+        }
+    
+        for item in longPressMenuItems(for: package) {
+            actionItems.append(CSActionItem(title: item.title, image: UIImage(systemNameOrNil: item.image), style: .default) {
+                self.useVisiblePresenter()
+                item.handler()
+            })
         }
     
         let copyBundleIDAction = CSActionItem(title: String(localizationKey: "Copy_ID"), image: .init(systemNameOrNil: "doc.on.doc"), style: .default) {
