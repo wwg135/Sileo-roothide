@@ -255,6 +255,9 @@ class PackageQueueButton: PackageButton {
             if package.fromStatusFile != queuedPackage.fromStatusFile {
                 return false
             }
+            else if package.version != queuedPackage.version {
+                return false
+            }
             else if package.local_deb != queuedPackage.local_deb {
                 return false
             }
