@@ -128,10 +128,21 @@ final class PackageListManager {
         repoInstallChange()
     }
 
+    // An installed package is updated from the source it was installed from; without a record (or when that
+    // source is gone) every source is considered
+    public func updateCandidate(for installed: Package) -> Package? {
+        if let source = InstalledSourceStore.source(identifier: installed.package, version: installed.version),
+           let repo = RepoManager.shared.repo(withSourceFile: source),
+           let origin = repo.newestPackage(identifier: installed.package) {
+            return origin
+        }
+        return self.newestPackage(identifier: installed.package, repoContext: nil)
+    }
+
     public func availableUpdates() -> [(Package, Package?)] {
         var updatesAvailable: [(Package, Package?)] = []
         for package in installedPackages.values {
-            guard let latestPackage = self.newestPackage(identifier: package.package, repoContext: nil) else {
+            guard let latestPackage = self.updateCandidate(for: package) else {
                 continue
             }
             

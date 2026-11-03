@@ -126,7 +126,15 @@ class PackageQueueButton: PackageButton {
             var image = "arrow.clockwise.circle"
             var queue = DownloadManagerQueue.installations
             var ambiguous = false
-            if package.fromStatusFile || package.version == installed.version {
+            if package.fromStatusFile,
+               let update = PackageListManager.shared.updateCandidate(for: installed),
+               checkRootHide(update),
+               DpkgWrapper.isVersion(update.version, greaterThan: installed.version) {
+                target = update
+                title = String(localizationKey: "Package_Upgrade_Action")
+                image = "icloud.and.arrow.down"
+                queue = .upgrades
+            } else if package.fromStatusFile || package.version == installed.version {
                 let resolved = resolveDownloadable(for: package)
                 target = resolved.package
                 ambiguous = resolved.ambiguous
