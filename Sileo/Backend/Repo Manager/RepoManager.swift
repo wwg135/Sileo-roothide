@@ -1164,14 +1164,6 @@ final class RepoManager {
                     
                     self.checkUpdatesInBackground(repo)
                     
-                    if preferredArch != dpkgArchitectures.primary.rawValue {
-                        let packages = PackageListManager.shared.packageList(identifier: "--contextRootHide", repoContext: repo)
-                        if packages.count > 0 {
-                            log("Didn't find availabile architectures in \(repo.releaseDict?["architectures"]) : \(releaseURL)", type: .warning)
-                            errorsFound = true
-                        }
-                    }
-                    
                     //dismiss progress bar
                     repo.releaseProgress = 0
                     repo.packagesProgress = 0
