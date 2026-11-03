@@ -336,6 +336,12 @@ class PackageQueueButton: PackageButton {
     }
     
     @objc func updateInfo() {
+        var primaryMenu = false
+        defer {
+            if #available(iOS 14.0, *) {
+                self.showsMenuAsPrimaryAction = primaryMenu
+            }
+        }
 //        NSLog("SileoLog: updateInfo package=\(package?.package)")
         guard let package = package else {
             self.updateButton(title: String(localizationKey: "Package_Get_Action"))
@@ -363,6 +369,10 @@ class PackageQueueButton: PackageButton {
             self.updateButton(title: String(localizationKey: "Package_Queue_Action"))
         } else if installedPackage != nil {
             self.updateButton(title: String(localizationKey: "Package_Modify_Action"))
+            if #available(iOS 14.0, *) {
+                // a tap on an installed package opens the same popup menu as a long press
+                primaryMenu = true
+            }
         } else if let price = paymentInfo?.price, package.commercial && !purchased {
             self.updateButton(title: price)
         } else {
