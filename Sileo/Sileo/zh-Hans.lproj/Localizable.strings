@@ -109,7 +109,7 @@
 "All_Categories" = "所有分类";
 "Internal_Repo" = "内部插件源";
 "External_Repo" = "外部插件源";
-"Ignored Updates" = "忽略的更新";
+"Ignored Updates" = "屏蔽的更新";
 
 "Repos" = "插件源";
 "Repo" = "插件源";
@@ -161,7 +161,7 @@
 "Auto_Confirm_Upgrade_All_Shortcut" = "触感触控全部更新自动确认";
 "Swipe_Actions" = "滑动动作";
 "Show_Provisional" = "搜索增强 （Canister）";
-"Show_Ignored_Updates" = "显示忽略的更新";
+"Show_Ignored_Updates" = "显示屏蔽的更新";
 "Developer_Mode" = "开发者模式";
 "Pog_Developer" = "您现在是开发者！";
 "Developer_Mode_Explain" = "开发者模式会关闭付款 API 接口的 HTTPS 请求。";

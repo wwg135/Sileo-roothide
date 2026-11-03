@@ -33,7 +33,7 @@
 // Popup messages
 "Background_App_Refresh" = "Background App Refresh";
 "Background_App_Refresh_Message" = "For the best and fastest experience, it is recommended to enable background app refresh. You can also get notifications when your tweaks are updated!";
-"Upgrade_All_Shortcut_Processing_Message" = "Refreshing all sources and upgrading all packages...";
+"Upgrade_All_Shortcut_Processing_Message" = "Refreshing all sources and updating all packages...";
 
 // Statuses for queued/downloading packages. Shown under their name in the queue/status popup.
 "Installing_Package_Status" = "Installing";
@@ -50,12 +50,12 @@
 "Queue_Clear_Button" = "Clear Queue";
 "Queue_Cancel_Downloads" = "Cancel Downloads";
 
-"Package_Upgrade_Action" = "Upgrade";
+"Package_Upgrade_Action" = "Update";
 "Package_Downgrade_Action" = "Downgrade";
 "Package_Reinstall_Action" = "Reinstall";
 "Package_Uninstall_Action" = "Uninstall";
-"Package_Modify_Action" = "Modify";
-"Package_Get_Action" = "Get";
+"Package_Modify_Action" = "Actions";
+"Package_Get_Action" = "Install";
 "Package_Queue_Action" = "Queue";
 "Package_Cancel_Action" = "Cancel";
 "Package_Paid" = "Paid";
@@ -63,8 +63,8 @@
 "Package_Share_Action" = "Share Package…";
 "Package_Developer_Find_Action" = "More by this Developer";
 "Package_Support_Action" = "Support";
-"Package_Hold_Enable_Action" = "Ignore Future Updates";
-"Package_Hold_Disable_Action" = "Stop Ignoring Updates";
+"Package_Hold_Enable_Action" = "Block Updates";
+"Package_Hold_Disable_Action" = "Unblock Updates";
 "Package_Wishlist_Add" = "Add to Wishlist";
 "Package_Wishlist_Remove" = "Remove from Wishlist";
 "Wishlist" = "Wishlist";
@@ -80,7 +80,7 @@
 
 "Installed_Heading" = "Installed";
 "Updates_Heading" = "Updates";
-"Upgrade_All_Button" = "Upgrade All";
+"Upgrade_All_Button" = "Update All";
 "Package_Search.Placeholder" = "Search for Packages";
 "Sort_Name" = "Name";
 "Sort_Date" = "Date";
@@ -110,7 +110,7 @@
 "All_Categories" = "All Categories";
 "Internal_Repo" = "Internal Repos";
 "External_Repo" = "External Repos";
-"Ignored Updates" = "Ignored Updates";
+"Ignored Updates" = "Blocked Updates";
 
 "Repos" = "Repositories";
 "Repo" = "Repository";
@@ -159,10 +159,10 @@
 "Reset_Tint_Color" = "Reset Tint Color";
 "Auto_Complete_Queue" = "Auto Complete Queue";
 "Show_Search_History" = "Show Search History";
-"Auto_Confirm_Upgrade_All_Shortcut" = "Auto Confirm Upgrade All Shortcut";
+"Auto_Confirm_Upgrade_All_Shortcut" = "Auto Confirm Update All Shortcut";
 "Swipe_Actions" = "Swipe Actions";
 "Show_Provisional" = "Show Packages From Canister";
-"Show_Ignored_Updates" = "Show Ignored Updates";
+"Show_Ignored_Updates" = "Show Blocked Updates";
 "Developer_Mode" = "Developer Mode";
 "Pog_Developer" = "You are now a developer!";
 "Developer_Mode_Explain" = "Developer Mode disables the HTTPS requirement of the Payment API.";
@@ -177,7 +177,7 @@
 "Apply_Changes_Confirm" = "Applying Changes will require a restart of Sileo";
 "Help_Translate" = "Help Translate Sileo";
 "Always_Show_Install_Log" = "Always Show Install Log";
-"Auto_Show_Queue" = "Show Queue on Upgrade All";
+"Auto_Show_Queue" = "Show Queue on Update All";
 
 "Sileo_Light" = "Sileo Light";
 "Sileo_Dark" = "Sileo Dark";
@@ -257,9 +257,9 @@
 "Compat_Not_Updated_Message" = "This package has not been updated for roothide and cannot be converted automatically. Please contact its developer.";
 "Not_Supported" = "Not Supported";
 "Package_Architecture" = "Architecture: %@";
-"Package_Choose_Version" = "Choose Version…";
+"Package_Choose_Version" = "Select Version";
 "Package_Select_Version" = "Select Version";
-"Package_Download_Deb" = "Download Package File";
+"Package_Download_Deb" = "Download Installer Package";
 "Package_View_Info" = "View Package Info";
 "Package_Downloading" = "Downloading…";
 

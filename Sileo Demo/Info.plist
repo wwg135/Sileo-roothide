@@ -97,7 +97,7 @@
 			<key>UIApplicationShortcutItemIconFile</key>
 			<string>UpgradeAll</string>
 			<key>UIApplicationShortcutItemTitle</key>
-			<string>Upgrade All</string>
+			<string>Update All</string>
 			<key>UIApplicationShortcutItemType</key>
 			<string>$(PRODUCT_BUNDLE_IDENTIFIER).UpgradeAll</string>
 		</dict>
