@@ -210,7 +210,20 @@ class PackageQueueButton: PackageButton {
         guard !sections.isEmpty else { return }
         let installedVersion = PackageListManager.shared.installedPackage(identifier: package.package)?.version
         let picker = PackageVersionPickerController(sections: sections, installedVersion: installedVersion) { [weak self] selected in
-            self?.requestQueuePackage(package: selected, queue: .installations)
+            guard let self = self, let viewController = self.viewControllerForPresentation else { return }
+            if let packageViewController = viewController as? PackageViewController {
+                packageViewController.show(package: selected)
+            } else if let navigationController = viewController.navigationController {
+                navigationController.pushViewController(
+                    NativePackageViewController.viewController(for: selected),
+                    animated: true
+                )
+            } else {
+                viewController.present(
+                    UINavigationController(rootViewController: NativePackageViewController.viewController(for: selected)),
+                    animated: true
+                )
+            }
         }
         let navigationController = UINavigationController(rootViewController: picker)
         navigationController.modalPresentationStyle = .pageSheet
@@ -343,6 +356,14 @@ class PackageQueueButton: PackageButton {
                             self.requestQueuePackage(package: package, queue: .installations)
                         }
                         actionItems.append(action)
+                    } else {
+                        let action = CSActionItem(title: String(localizationKey: "Package_Downgrade_Action"),
+                                                  image: UIImage(systemNameOrNil: "arrow.down.circle"),
+                                                  style: .default) {
+                            self.hapticResponse()
+                            self.requestQueuePackage(package: package, queue: .installations)
+                        }
+                        actionItems.append(action)
                     }
                 }
             }
@@ -430,17 +451,16 @@ class PackageQueueButton: PackageButton {
                             self.requestQueuePackage(package: package, queue: .upgrades)
                         }
                         downloadPopup.addAction(upgradeAction)
-                    } else {
+                    } else if package.version == installedPackage.version {
                         let reinstallAction = UIAlertAction(title: String(localizationKey: "Package_Reinstall_Action"), style: .default) { _ in
-                            if package.version == installedPackage.version {
-                                self.requestQueuePackage(package: package, queue: .installations)
-                            } else {
-                                downloadPopup.dismiss(animated: false) {
-                                    self.showVersionPrompt(nil)
-                                }
-                            }
+                            self.requestQueuePackage(package: package, queue: .installations)
                         }
                         downloadPopup.addAction(reinstallAction)
+                    } else {
+                        let downgradeAction = UIAlertAction(title: String(localizationKey: "Package_Downgrade_Action"), style: .default) { _ in
+                            self.requestQueuePackage(package: package, queue: .installations)
+                        }
+                        downloadPopup.addAction(downgradeAction)
                     }
                 } else if let hasRepoPackage = PackageListManager.shared.newestPackage(identifier: package.package) {
                     let reinstallAction = UIAlertAction(title: String(localizationKey: "Package_Reinstall_Action"), style: .default) { _ in

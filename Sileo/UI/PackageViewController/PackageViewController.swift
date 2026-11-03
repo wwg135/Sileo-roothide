@@ -484,6 +484,11 @@ class PackageViewController: SileoViewController, PackageQueueButtonDataProvider
         }
     }
 
+    func show(package: Package) {
+        self.package = package
+        reloadData()
+    }
+
     func versionTooLow() {
         let alertController = UIAlertController(title: String(localizationKey: "Sileo_Update_Required.Title", type: .error),
                                                 message: String(localizationKey: "Featured_Requires_Sileo_Update", type: .error),

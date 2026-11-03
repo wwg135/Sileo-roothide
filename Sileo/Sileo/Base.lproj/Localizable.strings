@@ -51,6 +51,7 @@
 "Queue_Cancel_Downloads" = "Cancel Downloads";
 
 "Package_Upgrade_Action" = "Upgrade";
+"Package_Downgrade_Action" = "Downgrade";
 "Package_Reinstall_Action" = "Reinstall";
 "Package_Uninstall_Action" = "Uninstall";
 "Package_Modify_Action" = "Modify";

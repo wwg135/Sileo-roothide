@@ -51,6 +51,7 @@
 "Queue_Cancel_Downloads" = "取消下载";
 
 "Package_Upgrade_Action" = "更新";
+"Package_Downgrade_Action" = "降级";
 "Package_Reinstall_Action" = "重新安装";
 "Package_Uninstall_Action" = "卸载";
 "Package_Modify_Action" = "更改";
