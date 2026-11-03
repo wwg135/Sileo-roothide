@@ -31,4 +31,9 @@ extension String {
             self = NSLocalizedString(localizationKey, tableName: type.tableName, comment: "")
         }
     }
+
+    /// Localizes text supplied by remote data, keyed by its English text. Unknown text is returned unchanged.
+    var remoteLocalized: String {
+        String(localizationKey: self)
+    }
 }

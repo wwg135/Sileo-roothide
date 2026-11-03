@@ -254,3 +254,10 @@
 "Compat_Not_Updated_Message" = "此軟體包尚未適配 roothide，且無法自動轉換，請聯絡開發者。";
 "Not_Supported" = "不支援";
 "Package_Architecture" = "架構：%@";
+
+/* Featured page strings supplied by the remote feed, keyed by their English text */
+"Hot Right Now" = "目前熱門";
+"What We're Using" = "我們正在使用";
+"Twitter" = "推特";
+"Website" = "官網";
+"Support" = "支援";

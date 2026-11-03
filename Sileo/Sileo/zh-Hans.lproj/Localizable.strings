@@ -261,3 +261,10 @@
 "Package_Download_Deb" = "下载安装包";
 "Package_View_Info" = "查看插件包信息";
 "Package_Downloading" = "正在下载…";
+
+/* Featured page strings supplied by the remote feed, keyed by their English text */
+"Hot Right Now" = "当前热门";
+"What We're Using" = "我们在用";
+"Twitter" = "推特";
+"Website" = "官网";
+"Support" = "支持";
