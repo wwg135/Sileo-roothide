@@ -137,6 +137,12 @@ class DpkgWrapper {
         return true
     }
     
+    // Not-installed packages have no dpkg status entry, so ask apt-mark whether they are held
+    public class func isIgnoringUpdates(package: String) -> Bool {
+        let (status, stdout, _) = spawnAsRoot(args: [CommandPath.aptmark, "-oDir::State::lists=", "showhold", package])
+        return status == 0 && stdout.split(separator: "\n").contains { $0.trimmingCharacters(in: .whitespaces) == package }
+    }
+
     public class func ignoreUpdates(_ ignoreUpdates: Bool, package: String) throws {
         let ignoreCommand = ignoreUpdates ? "hold" : "unhold"
         let command = [CommandPath.aptmark, "-oDir::State::lists=", "\(ignoreCommand)", "\(package)"]

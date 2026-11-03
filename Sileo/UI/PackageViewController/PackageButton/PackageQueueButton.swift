@@ -156,11 +156,10 @@ class PackageQueueButton: PackageButton {
 
         items.append((String(localizationKey: "Package_Choose_Version"), "list.bullet", false, { self.showVersionPrompt(nil) }))
 
-        if let installed = PackageListManager.shared.installedPackage(identifier: package.package) {
-            let holding = installed.wantInfo == .hold
-            let title = String(localizationKey: holding ? "Package_Hold_Disable_Action" : "Package_Hold_Enable_Action")
-            items.append((title, holding ? "hand.raised.slash" : "hand.raised", false, { self.setIgnoreUpdates(!holding, installed: installed) }))
-        }
+        let holdTarget = PackageListManager.shared.installedPackage(identifier: package.package)
+        let holding = holdTarget?.wantInfo == .hold || (holdTarget == nil && DpkgWrapper.isIgnoringUpdates(package: package.package))
+        let holdTitle = String(localizationKey: holding ? "Package_Hold_Disable_Action" : "Package_Hold_Enable_Action")
+        items.append((holdTitle, holding ? "hand.raised.slash" : "hand.raised", false, { self.setIgnoreUpdates(!holding, package: holdTarget ?? package) }))
 
         if let downloadable = downloadablePackage(for: package) {
             items.append((String(localizationKey: "Package_Download_Deb"), "arrow.down.to.line", false, { self.downloadDeb(downloadable) }))
@@ -182,7 +181,7 @@ class PackageQueueButton: PackageButton {
         return candidates.first { $0.architecture == package.architecture } ?? candidates.first
     }
 
-    private func setIgnoreUpdates(_ ignore: Bool, installed: Package) {
+    private func setIgnoreUpdates(_ ignore: Bool, package installed: Package) {
         #if !targetEnvironment(simulator) && !TARGET_SIMULATOR
         do {
             try DpkgWrapper.ignoreUpdates(ignore, package: installed.package)
