@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A1F0C0DE0000000000000004 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = A1F0C0DE0000000000000001 /* InfoPlist.strings */; };
 		A1C0DE0000000000000000B2 /* MachOPatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000B1 /* MachOPatcher.swift */; };
 		A1C0DE0000000000000000B3 /* MachOPatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000B1 /* MachOPatcher.swift */; };
 		A1C0DE0000000000000000B4 /* MachOPatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C0DE0000000000000000B1 /* MachOPatcher.swift */; };
@@ -1141,6 +1142,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A1F0C0DE0000000000000002 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "Sileo/zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		A1F0C0DE0000000000000003 /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "Sileo/zh-Hant.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		A1C0DE0000000000000000B1 /* MachOPatcher.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MachOPatcher.swift; sourceTree = "<group>"; };
 		A1C0DE0000000000000000A1 /* RootlessConverter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = RootlessConverter.swift; sourceTree = "<group>"; };
 		1716FD7221D5354100124AD2 /* FlaggedSourceWarningViewController.xib */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.xib; path = FlaggedSourceWarningViewController.xib; sourceTree = "<group>"; };
@@ -2697,6 +2700,7 @@
 				C373924721D5F80300E6F704 /* Categories.strings */,
 				C373924521D5F80300E6F704 /* Errors.strings */,
 				C373923421D5E46900E6F704 /* Localizable.strings */,
+				A1F0C0DE0000000000000001 /* InfoPlist.strings */,
 				C373925721D60B2600E6F704 /* Localizable.stringsdict */,
 				F1B99EF720DBE56100374C27 /* Test Data */,
 			);
@@ -3852,6 +3856,7 @@
 				1761F827227B5ADD00E03DC3 /* Licenses.plist in Resources */,
 				E155D4DF28CE5A7100AC7AE0 /* DarkMagic~ipad@2x.png in Resources */,
 				C373923621D5E46900E6F704 /* Localizable.strings in Resources */,
+				A1F0C0DE0000000000000004 /* InfoPlist.strings in Resources */,
 				E13BD77F2645E1AA006A5EF2 /* Nightly~ipad@3x.png in Resources */,
 				E1138BE92A3252ED00887BFE /* Dopamine@3x.png in Resources */,
 				E1D2E2CD26C3383D00444437 /* Midnight~ipad@2x.png in Resources */,
@@ -4657,6 +4662,15 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		A1F0C0DE0000000000000001 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				A1F0C0DE0000000000000002 /* zh-Hans */,
+				A1F0C0DE0000000000000003 /* zh-Hant */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 		C373923421D5E46900E6F704 /* Localizable.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
