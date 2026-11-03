@@ -10,10 +10,28 @@ import Foundation
 
 class TabBar: UITabBar {
     var onLayout: (() -> Void)?
+    private var didScheduleRelayout = false
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        setNeedsLayout()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        setNeedsLayout()
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
         onLayout?()
+        if !didScheduleRelayout, onLayout != nil {
+            didScheduleRelayout = true
+            // Item buttons settle after the first layout pass at launch
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+                self?.onLayout?()
+            }
+        }
     }
 
 

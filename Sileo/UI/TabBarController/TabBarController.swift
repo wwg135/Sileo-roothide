@@ -54,6 +54,8 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        self.tabBar.layoutIfNeeded()
+        applyFloatingStyle()
         
         self.updatePopup()
     }
