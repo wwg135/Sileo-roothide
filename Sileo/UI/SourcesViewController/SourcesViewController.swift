@@ -261,7 +261,7 @@ final class SourcesViewController: SileoViewController {
             } else {
                 nav.leftBarButtonItem = UIBarButtonItem(title: String(localizationKey: "Edit"), style: .done, target: self, action: #selector(self.toggleEditing(_:)))
                 if #available(iOS 14.0, *) {
-                    let promptAddRepoAction = UIAction(title: "Add Repo", image: .init(systemName: "plus.circle")) { _ in
+                    let promptAddRepoAction = UIAction(title: String(localizationKey: "Add_Source.Button.Add"), image: .init(systemName: "plus.circle")) { _ in
                         self.addSource(nil)
                     }
                     
