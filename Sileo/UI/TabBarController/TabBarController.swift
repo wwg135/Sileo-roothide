@@ -362,8 +362,11 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             floatingBackground = container
         }
         guard let container = floatingBackground, let blur = container.viewWithTag(1) else { return }
-        let barHeight: CGFloat = 64
-        let frame = CGRect(x: floatingInset, y: 0, width: self.tabBar.bounds.width - floatingInset * 2, height: barHeight)
+        let barHeight: CGFloat = 72
+        // Center the capsule on the actual item row so top/bottom spacing is equal
+        let buttons = self.tabBar.subviews.filter { String(describing: type(of: $0)).contains("TabBarButton") }
+        let itemMidY = buttons.isEmpty ? 24.5 : buttons.map { $0.frame.midY }.reduce(0, +) / CGFloat(buttons.count)
+        let frame = CGRect(x: floatingInset, y: itemMidY - barHeight / 2, width: self.tabBar.bounds.width - floatingInset * 2, height: barHeight)
         container.frame = frame
         blur.frame = container.bounds
         blur.layer.cornerRadius = barHeight / 2
@@ -373,7 +376,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         let count = CGFloat(max(self.tabBar.items?.count ?? 1, 1))
         self.tabBar.itemPositioning = .centered
         self.tabBar.itemSpacing = 0
-        self.tabBar.itemWidth = (frame.width - 24) / count
+        self.tabBar.itemWidth = (frame.width - 8) / count
     }
 
     override var insetsForBottomDockingView: UIEdgeInsets {
