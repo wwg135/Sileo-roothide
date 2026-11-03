@@ -255,7 +255,7 @@
 "Compat_Tool_Missing" = "缺少所需工具“%@”，请先安装。";
 "Compat_Not_Updated_Message" = "%@\n\n此插件包尚未适配 roothide，且无法自动转换，请联系开发者。";
 "Package_Architecture" = "架构：%@";
-"Package_Choose_Version" = "选择版本…";
+"Package_Choose_Version" = "选择版本";
 "Package_Select_Version" = "选择版本";
 "Package_Download_Deb" = "下载安装包";
 "Package_View_Info" = "查看插件包信息";
