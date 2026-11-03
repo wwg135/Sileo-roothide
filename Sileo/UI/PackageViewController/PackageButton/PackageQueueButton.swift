@@ -231,9 +231,12 @@ class PackageQueueButton: PackageButton {
         }
 
         guard !sections.isEmpty else { return }
-        let picker = PackageVersionPickerController(sections: sections, current: package) { [weak self] selected in
-            guard let self = self, let viewController = self.viewControllerForPresentation else { return }
-            if let navigationController = self.versionSelectionNavigationController {
+        // capture strongly: the long-press preview (and this button) may be released before a version is picked
+        let listNavigationController = self.versionSelectionNavigationController
+        let presenter = self.viewControllerForPresentation
+        let picker = PackageVersionPickerController(sections: sections, current: package) { selected in
+            guard let viewController = presenter else { return }
+            if let navigationController = listNavigationController {
                 navigationController.pushViewController(
                     NativePackageViewController.viewController(for: selected),
                     animated: true
