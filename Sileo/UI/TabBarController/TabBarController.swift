@@ -314,7 +314,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         return tabBarFrame
     }
     
-    private var floatingInset: CGFloat { 12 }
+    private var floatingInset: CGFloat { 10 }
     private var floatingRetryCount = 0
     private var floatingBackground: UIView?
     private var originalStandardAppearance: UITabBarAppearance?
