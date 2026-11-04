@@ -275,7 +275,8 @@ final class SourcesViewController: SileoViewController {
                     let removeBrokenMenu = UIMenu(title: "", options: .displayInline, children: [removeBrokenAction])
                     
                     let menu = UIMenu(title: String(localizationKey: "Add_Source.Title"), children: [promptAddRepoAction, importReposAction, removeBrokenMenu])
-                    nav.rightBarButtonItem = UIBarButtonItem(systemItem: .add, primaryAction: promptAddRepoAction, menu: menu)
+                    // no primary action: a tap opens the menu, "Add Source" in it opens the add source prompt
+                    nav.rightBarButtonItem = UIBarButtonItem(systemItem: .add, primaryAction: nil, menu: menu)
                 } else {
                     nav.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(self.presentAddRepoOptions))
                 }
