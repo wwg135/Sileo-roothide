@@ -46,6 +46,8 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                                                object: nil)
         updateSileoColors()
         (self.tabBar as? TabBar)?.onLayout = { [weak self] in self?.applyFloatingStyle() }
+        // Install the saved item metrics before the first layout so the bar never has to resize on launch
+        applyFloatingStyle()
         NotificationCenter.default.addObserver(self,
                                                selector: #selector(floatingTabBarChanged),
                                                name: Notification.Name("FloatingTabBar"),
@@ -330,11 +332,20 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     private var floatingItemWidth: CGFloat = 0
     private var floatingRefreshPending = false
     private var floatingSettled = false
+    private var floatingTrusted = false
+    private var floatingTrustedReselected = false
     private let floatingItemWidthKey = "FloatingTabBarCalibratedItemWidth"
+    private let floatingBarWidthKey = "FloatingTabBarCalibratedBarWidth"
+    private var floatingReferenceWidth: CGFloat {
+        self.tabBar.bounds.width > 0 ? self.tabBar.bounds.width : self.view.bounds.width
+    }
 
     private func revealFloatingTabBar(save: Bool = true) {
         floatingSettled = true
-        if save, floatingItemWidth > 0 { UserDefaults.standard.set(Double(floatingItemWidth), forKey: floatingItemWidthKey) }
+        if save, floatingItemWidth > 0 {
+            UserDefaults.standard.set(Double(floatingItemWidth), forKey: floatingItemWidthKey)
+            UserDefaults.standard.set(Double(floatingReferenceWidth), forKey: floatingBarWidthKey)
+        }
         guard self.tabBar.alpha < 1 else { return }
         UIView.animate(withDuration: 0.2) { self.tabBar.alpha = 1 }
     }
@@ -429,7 +440,10 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 floatingItemWidth = 0
                 floatingRefreshPending = false
                 floatingSettled = false
+                floatingTrusted = false
+                floatingTrustedReselected = false
                 UserDefaults.standard.removeObject(forKey: floatingItemWidthKey)
+                UserDefaults.standard.removeObject(forKey: floatingBarWidthKey)
                 self.tabBar.alpha = 1
                 self.tabBar._blurEnabled = true
                 self.tabBar.standardAppearance = originalStandardAppearance ?? UITabBarAppearance()
@@ -447,8 +461,12 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             self.tabBar.standardAppearance = appearance
             self.tabBar.scrollEdgeAppearance = appearance
             floatingAppearance = appearance
-            let cached = CGFloat(UserDefaults.standard.double(forKey: floatingItemWidthKey))
+            var cached = CGFloat(UserDefaults.standard.double(forKey: floatingItemWidthKey))
+            let cachedBarWidth = CGFloat(UserDefaults.standard.double(forKey: floatingBarWidthKey))
+            // A calibration only holds for the bar width it was measured at
+            if floatingReferenceWidth > 0, abs(cachedBarWidth - floatingReferenceWidth) > 1 { cached = 0 }
             if cached > 0 {
+                floatingTrusted = true
                 // Reuse the saved calibration so the bar appears in its final layout immediately
                 floatingItemWidth = cached
                 appearance.stackedItemPositioning = .centered
@@ -534,8 +552,15 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         if sortedMids.count >= 2, let first = sortedMids.first, let last = sortedMids.last {
             let actualPitch = (last - first) / CGFloat(sortedMids.count - 1)
             if abs(actualPitch - targetPitch) <= 1 {
+                floatingTrusted = false
                 revealFloatingTabBar()
+            } else if floatingTrusted && !floatingTrustedReselected {
+                // The saved width is right; the system just has not re-read it yet, so only relayout once
+                floatingTrustedReselected = true
+                reselectToRefreshItemMetrics()
+                return
             } else {
+                floatingTrusted = false
                 itemWidth = max(20, (itemWidth + targetPitch - actualPitch).rounded(.down))
             }
         }
@@ -549,15 +574,19 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             self.tabBar.standardAppearance = appearance
             self.tabBar.scrollEdgeAppearance = appearance
             // UITabBar only re-reads stacked item metrics on a selection change, so re-select the current tab (tabBar.selectedItem must not be touched directly)
-            floatingRefreshPending = true
-            DispatchQueue.main.async { [weak self] in
-                guard let self = self else { return }
-                self.selectedIndex = self.selectedIndex
-                self.tabBar.setNeedsLayout()
-                self.tabBar.layoutIfNeeded()
-                self.floatingRefreshPending = false
-                self.tabBar.setNeedsLayout()
-            }
+            reselectToRefreshItemMetrics()
+        }
+    }
+
+    private func reselectToRefreshItemMetrics() {
+        floatingRefreshPending = true
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.selectedIndex = self.selectedIndex
+            self.tabBar.setNeedsLayout()
+            self.tabBar.layoutIfNeeded()
+            self.floatingRefreshPending = false
+            self.tabBar.setNeedsLayout()
         }
     }
 
