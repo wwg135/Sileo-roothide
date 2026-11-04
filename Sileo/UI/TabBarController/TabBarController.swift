@@ -318,6 +318,8 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     private var floatingPopupExtraOffset: CGFloat { 16 }
     private var floatingRetryCount = 0
     private var floatingBackground: UIView?
+    private var floatingAppearance: UITabBarAppearance?
+    private var floatingItemWidth: CGFloat = 0
     private var originalStandardAppearance: UITabBarAppearance?
     private var originalScrollEdgeAppearance: UITabBarAppearance?
 
@@ -338,6 +340,8 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             if let container = floatingBackground {
                 container.removeFromSuperview()
                 floatingBackground = nil
+                floatingAppearance = nil
+                floatingItemWidth = 0
                 self.tabBar._blurEnabled = true
                 self.tabBar.standardAppearance = originalStandardAppearance ?? UITabBarAppearance()
                 self.tabBar.scrollEdgeAppearance = originalScrollEdgeAppearance
@@ -353,6 +357,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             appearance.configureWithTransparentBackground()
             self.tabBar.standardAppearance = appearance
             self.tabBar.scrollEdgeAppearance = appearance
+            floatingAppearance = appearance
             self.tabBar._blurEnabled = false
 
             let container = UIView()
@@ -413,7 +418,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         let spacing: CGFloat = 0
         let sideMargin: CGFloat = 26
         let targetPitch = (frame.width - sideMargin * 2) / count
-        var itemWidth = self.tabBar.itemWidth > 0 ? self.tabBar.itemWidth : targetPitch.rounded(.down)
+        var itemWidth = floatingItemWidth > 0 ? floatingItemWidth : targetPitch.rounded(.down)
         let sortedMids = colMids.sorted()
         if sortedMids.count >= 2, let first = sortedMids.first, let last = sortedMids.last {
             let actualPitch = (last - first) / CGFloat(sortedMids.count - 1)
@@ -421,11 +426,16 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 itemWidth = max(20, (itemWidth + targetPitch - actualPitch).rounded(.down))
             }
         }
-        if self.tabBar.itemWidth != itemWidth {
-            self.tabBar.itemWidth = itemWidth
+        // On iOS 13+ the legacy itemWidth/itemSpacing/itemPositioning are overridden by the
+        // appearance's stacked* values, so they must be set on the appearance itself
+        if let appearance = floatingAppearance, floatingItemWidth != itemWidth || appearance.stackedItemPositioning != .centered {
+            floatingItemWidth = itemWidth
+            appearance.stackedItemPositioning = .centered
+            appearance.stackedItemWidth = itemWidth
+            appearance.stackedItemSpacing = spacing
+            self.tabBar.standardAppearance = appearance
+            self.tabBar.scrollEdgeAppearance = appearance
         }
-        if self.tabBar.itemSpacing != spacing { self.tabBar.itemSpacing = spacing }
-        if self.tabBar.itemPositioning != .centered { self.tabBar.itemPositioning = .centered }
     }
 
     override var insetsForBottomDockingView: UIEdgeInsets {
