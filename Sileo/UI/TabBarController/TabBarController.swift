@@ -372,9 +372,9 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 indicator.effect = UIGlassEffect()
             } else {
                 indicator.effect = UIBlurEffect(style: .systemUltraThinMaterial)
-                indicator.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor.white.withAlphaComponent(0.12) : UIColor.black.withAlphaComponent(0.06) }
+                indicator.contentView.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor.white.withAlphaComponent(0.2) : UIColor.black.withAlphaComponent(0.09) }
                 indicator.layer.borderWidth = 0.5
-                indicator.layer.borderColor = UIColor.white.withAlphaComponent(0.7).cgColor
+                indicator.layer.borderColor = UIColor.white.withAlphaComponent(0.9).cgColor
             }
             indicator.clipsToBounds = true
             indicator.layer.cornerCurve = .continuous
