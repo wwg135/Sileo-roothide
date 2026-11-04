@@ -13,6 +13,9 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     static var singleton: TabBarController?
     private var downloadsController: UINavigationController?
     private(set) public var popupIsPresented = false
+    // makes the next popup bar presentation open the popup in the same animation
+    var openPopupOnPresent = false
+    private var isPresentingOpenPopup = false
     private var popupLock = DispatchSemaphore(value: 1)
     private var shouldSelectIndex = -1
     private static let lastSelectedTabKey = "LastSelectedTab"
@@ -137,6 +140,9 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         }
         
         popupIsPresented = true
+        let openPopup = openPopupOnPresent
+        openPopupOnPresent = false
+        isPresentingOpenPopup = openPopup
         self.popupContentView.popupCloseButtonAutomaticallyUnobstructsTopBars = false
         self.popupBar.toolbar.tag = WHITE_BLUR_TAG
         self.popupBar.barStyle = .prominent
@@ -155,7 +161,8 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         TabBarController.popupQueue.async {
             self.popupQueueLock.wait()
             DispatchQueue.main.async {
-                self.presentPopupBar(withContentViewController: downloadsController, animated: animated) {
+                self.presentPopupBar(withContentViewController: downloadsController, openPopup: openPopup, animated: animated) {
+                    self.isPresentingOpenPopup = false
                     completion?()
                     self.popupQueueLock.signal()
                 }
@@ -204,7 +211,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     func presentPopupController(completion: (() -> Void)?) {
         NSLog("SileoLog: TabBarController.presentPopupController \(completion)")
 
-        guard popupIsPresented else {
+        guard popupIsPresented, !isPresentingOpenPopup else {
             if let completion = completion {
                 completion()
             }
@@ -217,23 +224,6 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         }
         
         self.openPopup(animated: true, completion: completion)
-    }
-    
-    // expands the popup once the modal being dismissed and the popup bar presentation are done, so the open is not dropped
-    func presentPopupControllerWhenReady(retries: Int = 40) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            if self.presentedViewController != nil && retries > 0 {
-                self.presentPopupControllerWhenReady(retries: retries - 1)
-                return
-            }
-            TabBarController.popupQueue.async {
-                self.popupQueueLock.wait()
-                self.popupQueueLock.signal()
-                DispatchQueue.main.async {
-                    self.presentPopupController()
-                }
-            }
-        }
     }
     
     func dismissPopupController() {

@@ -770,16 +770,30 @@ final class DownloadManager {
             
             DispatchQueue.main.async {
                 self.viewController.reloadData()
-                TabBarController.singleton?.updatePopup(completion: completion)
+                if self.consumeAutoInstall() {
+                    // start right away and open the install window directly, without showing the queue bar first
+                    if let tabBar = TabBarController.singleton, !tabBar.popupIsPresented {
+                        tabBar.openPopupOnPresent = true
+                        self.viewController.confirmQueued(nil)
+                        if tabBar.openPopupOnPresent {
+                            tabBar.presentPopup()
+                        }
+                    } else {
+                        self.viewController.confirmQueued(nil)
+                        TabBarController.singleton?.presentPopupController()
+                    }
+                    completion?()
+                } else {
+                    TabBarController.singleton?.updatePopup(completion: completion)
+                }
                 NotificationCenter.default.post(name: PackageListManager.stateChange, object: nil)
-                self.autoInstallIfSafe()
             }
         }
     }
     
     // one-shot: an external deb is installed right away only when nothing needs the user's review
-    private func autoInstallIfSafe() {
-        guard let identifier = autoInstallIdentifier else { return }
+    private func consumeAutoInstall() -> Bool {
+        guard let identifier = autoInstallIdentifier else { return false }
         autoInstallIdentifier = nil
         
         let vars = self.vars
@@ -790,11 +804,10 @@ final class DownloadManager {
               vars.uninstalldeps.isEmpty,
               vars.installations.count == 1,
               vars.installations.raw.contains(where: { $0.package.package == identifier && $0.package.local_deb != nil })
-        else { return }
+        else { return false }
         
         NSLog("SileoLog: auto install \(identifier)")
-        viewController.confirmQueued(nil)
-        TabBarController.singleton?.presentPopupControllerWhenReady()
+        return true
     }
     
     public func findDownloadPackage(package: Package) -> DownloadPackage? {
