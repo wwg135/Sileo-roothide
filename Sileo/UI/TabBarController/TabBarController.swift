@@ -128,7 +128,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         self.updateSileoColors()
         
         self.popupBar.toolbar.setBackgroundImage(nil, forToolbarPosition: .any, barMetrics: .default)
-        self.popupBar.tabBarHeight = self.tabBar.frame.height + (isFloatingEnabled ? floatingPopupExtraOffset : 0)
+        self.popupBar.tabBarHeight = floatingPopupTabBarHeight
         if UIDevice.current.userInterfaceIdiom == .pad {
             self.popupBar.isInlineWithTabBar = true
             self.popupBar.tabBarHeight += 1
@@ -315,7 +315,13 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     }
     
     private var floatingInset: CGFloat { 10 }
-    private var floatingPopupExtraOffset: CGFloat { 32 }
+    private var floatingPopupTabBarHeight: CGFloat {
+        // Popup bottom edge should touch the capsule's top edge
+        if isFloatingEnabled, let container = floatingBackground, !container.isHidden, container.frame.height > 0 {
+            return max(self.tabBar.frame.height, self.tabBar.bounds.height - container.frame.minY)
+        }
+        return self.tabBar.frame.height
+    }
     private var floatingRetryCount = 0
     private var floatingBackground: UIView?
     private var floatingAppearance: UITabBarAppearance?
@@ -339,7 +345,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
 
     @objc private func floatingTabBarChanged() {
         if popupIsPresented {
-            self.popupBar.tabBarHeight = self.tabBar.frame.height + (isFloatingEnabled ? floatingPopupExtraOffset : 0)
+            self.popupBar.tabBarHeight = floatingPopupTabBarHeight
         }
         self.view.setNeedsLayout()
         self.view.layoutIfNeeded()
@@ -438,6 +444,9 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         let itemMidY = rowMids.reduce(0, +) / CGFloat(rowMids.count)
         let frame = CGRect(x: floatingInset, y: itemMidY - barHeight / 2, width: self.tabBar.bounds.width - floatingInset * 2, height: barHeight)
         container.frame = frame
+        if popupIsPresented, self.popupBar.tabBarHeight != floatingPopupTabBarHeight {
+            self.popupBar.tabBarHeight = floatingPopupTabBarHeight
+        }
         blur.frame = container.bounds
         blur.layer.cornerRadius = barHeight / 2
         container.layer.shadowPath = UIBezierPath(roundedRect: container.bounds, cornerRadius: barHeight / 2).cgPath
