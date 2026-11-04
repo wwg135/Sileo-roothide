@@ -15,6 +15,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     private(set) public var popupIsPresented = false
     private var popupLock = DispatchSemaphore(value: 1)
     private var shouldSelectIndex = -1
+    private static let lastSelectedTabKey = "LastSelectedTab"
     private var fuckedUpSources = false
 //    private let ipadModeMinWidth = CGFloat(752) //debug
     private let ipadModeMinWidth = CGFloat(768)
@@ -33,6 +34,11 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         
         delegate = self
         TabBarController.singleton = self
+        
+        let savedTab = UserDefaults.standard.integer(forKey: TabBarController.lastSelectedTabKey)
+        if let count = viewControllers?.count, savedTab > 0, savedTab < count {
+            selectedIndex = savedTab
+        }
         
         downloadsController = UINavigationController(rootViewController: DownloadManager.shared.viewController)
         downloadsController?.isNavigationBarHidden = true
@@ -70,6 +76,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
         // Run after the tab bar relayout, otherwise the system may rebuild the icon view and drop the animation
         DispatchQueue.main.async { [weak self] in self?.animateSelectedIcon() }
+        saveSelectedTab()
         if shouldSelectIndex == tabBarController.selectedIndex {
             if let splitViewController = viewController as? UISplitViewController {
                 if let navController = splitViewController.viewControllers[0] as? UINavigationController {
@@ -105,6 +112,11 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         fatalError("View Controller mismatch")
     }
     
+    // Selection can also change in code (URLs, shortcuts), so this is also called when the app goes to the background
+    func saveSelectedTab() {
+        UserDefaults.standard.set(selectedIndex, forKey: TabBarController.lastSelectedTabKey)
+    }
+
     func presentPopup() {
         presentPopup(completion: nil)
     }

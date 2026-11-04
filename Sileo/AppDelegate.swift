@@ -439,7 +439,13 @@ class SileoAppDelegate: UIResponder, UIApplicationDelegate, UITabBarControllerDe
         }
     }
     
+    // this object replaces TabBarController as the tab bar delegate
+    func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+        TabBarController.singleton?.saveSelectedTab()
+    }
+    
     func applicationDidEnterBackground(_ application: UIApplication) {
+        TabBarController.singleton?.saveSelectedTab()
         UIColor.isTransitionLockedForiOS13Bug = true
         
         if #available(iOS 13.0, *) {
