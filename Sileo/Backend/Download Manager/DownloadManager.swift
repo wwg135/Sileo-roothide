@@ -794,7 +794,7 @@ final class DownloadManager {
         
         NSLog("SileoLog: auto install \(identifier)")
         viewController.confirmQueued(nil)
-        TabBarController.singleton?.presentPopupController()
+        TabBarController.singleton?.presentPopupControllerWhenReady()
     }
     
     public func findDownloadPackage(package: Package) -> DownloadPackage? {

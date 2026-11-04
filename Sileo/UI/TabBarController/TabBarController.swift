@@ -219,6 +219,23 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         self.openPopup(animated: true, completion: completion)
     }
     
+    // expands the popup once the modal being dismissed and the popup bar presentation are done, so the open is not dropped
+    func presentPopupControllerWhenReady(retries: Int = 40) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            if self.presentedViewController != nil && retries > 0 {
+                self.presentPopupControllerWhenReady(retries: retries - 1)
+                return
+            }
+            TabBarController.popupQueue.async {
+                self.popupQueueLock.wait()
+                self.popupQueueLock.signal()
+                DispatchQueue.main.async {
+                    self.presentPopupController()
+                }
+            }
+        }
+    }
+    
     func dismissPopupController() {
         self.dismissPopupController(completion: nil)
     }
