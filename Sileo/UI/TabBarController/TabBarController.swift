@@ -320,6 +320,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     private var floatingBackground: UIView?
     private var floatingAppearance: UITabBarAppearance?
     private var floatingItemWidth: CGFloat = 0
+    private var floatingRefreshPending = false
     private var originalStandardAppearance: UITabBarAppearance?
     private var originalScrollEdgeAppearance: UITabBarAppearance?
 
@@ -342,6 +343,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 floatingBackground = nil
                 floatingAppearance = nil
                 floatingItemWidth = 0
+                floatingRefreshPending = false
                 self.tabBar._blurEnabled = true
                 self.tabBar.standardAppearance = originalStandardAppearance ?? UITabBarAppearance()
                 self.tabBar.scrollEdgeAppearance = originalScrollEdgeAppearance
@@ -416,8 +418,10 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         // and correct itemWidth until five items evenly fill the capsule with a small side margin
         let count = CGFloat(max(self.tabBar.items?.count ?? 1, 1))
         let spacing: CGFloat = 0
-        let sideMargin: CGFloat = 26
+        let sideMargin: CGFloat = 20
         let targetPitch = (frame.width - sideMargin * 2) / count
+        // Skip correction while a previous change has not been laid out yet, otherwise it would overshoot
+        guard !floatingRefreshPending else { return }
         var itemWidth = floatingItemWidth > 0 ? floatingItemWidth : targetPitch.rounded(.down)
         let sortedMids = colMids.sorted()
         if sortedMids.count >= 2, let first = sortedMids.first, let last = sortedMids.last {
@@ -435,6 +439,18 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             appearance.stackedItemSpacing = spacing
             self.tabBar.standardAppearance = appearance
             self.tabBar.scrollEdgeAppearance = appearance
+            // UITabBar only re-reads stacked item metrics on a selection change, so force one
+            floatingRefreshPending = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self = self else { return }
+                let selected = self.tabBar.selectedItem
+                self.tabBar.selectedItem = nil
+                self.tabBar.selectedItem = selected
+                self.tabBar.setNeedsLayout()
+                self.tabBar.layoutIfNeeded()
+                self.floatingRefreshPending = false
+                self.tabBar.setNeedsLayout()
+            }
         }
     }
 
