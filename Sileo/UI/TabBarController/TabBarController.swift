@@ -128,7 +128,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         self.updateSileoColors()
         
         self.popupBar.toolbar.setBackgroundImage(nil, forToolbarPosition: .any, barMetrics: .default)
-        self.popupBar.tabBarHeight = self.tabBar.frame.height
+        self.popupBar.tabBarHeight = self.tabBar.frame.height + (isFloatingEnabled ? floatingPopupExtraOffset : 0)
         if UIDevice.current.userInterfaceIdiom == .pad {
             self.popupBar.isInlineWithTabBar = true
             self.popupBar.tabBarHeight += 1
@@ -315,6 +315,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     }
     
     private var floatingInset: CGFloat { 10 }
+    private var floatingPopupExtraOffset: CGFloat { 16 }
     private var floatingRetryCount = 0
     private var floatingBackground: UIView?
     private var originalStandardAppearance: UITabBarAppearance?
@@ -325,6 +326,9 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     }
 
     @objc private func floatingTabBarChanged() {
+        if popupIsPresented {
+            self.popupBar.tabBarHeight = self.tabBar.frame.height + (isFloatingEnabled ? floatingPopupExtraOffset : 0)
+        }
         self.view.setNeedsLayout()
         self.view.layoutIfNeeded()
     }
@@ -407,7 +411,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         // and correct itemWidth until five items evenly fill the capsule with a small side margin
         let count = CGFloat(max(self.tabBar.items?.count ?? 1, 1))
         let spacing: CGFloat = 0
-        let sideMargin: CGFloat = 12
+        let sideMargin: CGFloat = 26
         let targetPitch = (frame.width - sideMargin * 2) / count
         var itemWidth = self.tabBar.itemWidth > 0 ? self.tabBar.itemWidth : targetPitch.rounded(.down)
         let sortedMids = colMids.sorted()
