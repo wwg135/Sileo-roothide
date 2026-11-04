@@ -330,8 +330,6 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     private var floatingItemWidth: CGFloat = 0
     private var floatingRefreshPending = false
     private var floatingSettled = false
-    private var floatingIndicator: UIVisualEffectView?
-    private var floatingIndicatorIndex = -1
     private let floatingItemWidthKey = "FloatingTabBarCalibratedItemWidth"
 
     private func revealFloatingTabBar(save: Bool = true) {
@@ -353,51 +351,6 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         }
         self.view.setNeedsLayout()
         self.view.layoutIfNeeded()
-    }
-
-    // Glass bubble that slides to the selected item, plus a small bounce on its icon
-    private func updateFloatingIndicator(in container: UIView, buttons: [UIView]) {
-        let sorted = buttons.sorted { $0.frame.midX < $1.frame.midX }
-        let index = self.selectedIndex
-        guard index >= 0, index < sorted.count else {
-            floatingIndicator?.isHidden = true
-            return
-        }
-        let indicator: UIVisualEffectView
-        if let existing = floatingIndicator {
-            indicator = existing
-        } else {
-            indicator = UIVisualEffectView(effect: nil)
-            if #available(iOS 26.0, *) {
-                indicator.effect = UIGlassEffect()
-            } else {
-                indicator.effect = UIBlurEffect(style: .systemUltraThinMaterial)
-                indicator.contentView.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor.white.withAlphaComponent(0.2) : UIColor.black.withAlphaComponent(0.09) }
-                indicator.layer.borderWidth = 0.5
-                indicator.layer.borderColor = UIColor.white.withAlphaComponent(0.9).cgColor
-            }
-            indicator.clipsToBounds = true
-            indicator.layer.cornerCurve = .continuous
-            indicator.isUserInteractionEnabled = false
-            container.addSubview(indicator)
-            floatingIndicator = indicator
-        }
-        indicator.isHidden = false
-        let button = sorted[index]
-        let rect = container.convert(button.bounds, from: button)
-        let height = container.bounds.height - 10
-        let width = rect.width + 8
-        let target = CGRect(x: rect.midX - width / 2, y: (container.bounds.height - height) / 2, width: width, height: height)
-        indicator.layer.cornerRadius = height / 2
-        let changed = floatingIndicatorIndex != index
-        if changed, floatingIndicatorIndex >= 0 {
-            UIView.animate(withDuration: 0.45, delay: 0, usingSpringWithDamping: 0.72, initialSpringVelocity: 0.6, options: [.allowUserInteraction, .beginFromCurrentState]) {
-                indicator.frame = target
-            }
-        } else if changed || indicator.frame != target, indicator.layer.animationKeys()?.isEmpty ?? true {
-            indicator.frame = target
-        }
-        floatingIndicatorIndex = index
     }
 
     // Icon image view of a tab button, ignoring badge views (items with badges nest their views differently)
@@ -473,8 +426,6 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 container.removeFromSuperview()
                 floatingBackground = nil
                 floatingAppearance = nil
-                floatingIndicator = nil
-                floatingIndicatorIndex = -1
                 floatingItemWidth = 0
                 floatingRefreshPending = false
                 floatingSettled = false
@@ -534,7 +485,6 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         // Center the capsule on the visible icon+label row so top/bottom spacing is equal
         var rowMids: [CGFloat] = []
         var colMids: [CGFloat] = []
-        var buttons: [UIView] = []
         func collect(_ view: UIView) {
             for sub in view.subviews {
                 if String(describing: type(of: sub)).contains("TabBarButton") {
@@ -542,7 +492,6 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                     let union = content.reduce(CGRect.null) { $0.union($1.frame) }
                     let rect = union.isNull ? sub.bounds : union
                     rowMids.append(self.tabBar.convert(rect, from: sub).midY)
-                    buttons.append(sub)
                     colMids.append(self.tabBar.convert(sub.bounds, from: sub).midX)
                 } else {
                     collect(sub)
@@ -571,7 +520,6 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         blur.layer.cornerRadius = barHeight / 2
         container.layer.shadowPath = UIBezierPath(roundedRect: container.bounds, cornerRadius: barHeight / 2).cgPath
         self.tabBar.sendSubviewToBack(container)
-        updateFloatingIndicator(in: container, buttons: buttons)
 
         // The system adds its own padding between items, so measure the real pitch
         // and correct itemWidth until five items evenly fill the capsule with a small side margin
