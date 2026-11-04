@@ -314,7 +314,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         return tabBarFrame
     }
     
-    private var floatingInset: CGFloat { 28 }
+    private var floatingInset: CGFloat { 12 }
     private var floatingRetryCount = 0
     private var floatingBackground: UIView?
     private var originalStandardAppearance: UITabBarAppearance?
@@ -369,6 +369,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         let barHeight: CGFloat = 78
         // Center the capsule on the visible icon+label row so top/bottom spacing is equal
         var rowMids: [CGFloat] = []
+        var colMids: [CGFloat] = []
         func collect(_ view: UIView) {
             for sub in view.subviews {
                 if String(describing: type(of: sub)).contains("TabBarButton") {
@@ -376,6 +377,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                     let union = content.reduce(CGRect.null) { $0.union($1.frame) }
                     let rect = union.isNull ? sub.bounds : union
                     rowMids.append(self.tabBar.convert(rect, from: sub).midY)
+                    colMids.append(self.tabBar.convert(sub.bounds, from: sub).midX)
                 } else {
                     collect(sub)
                 }
@@ -401,10 +403,20 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         container.layer.shadowPath = UIBezierPath(roundedRect: container.bounds, cornerRadius: barHeight / 2).cgPath
         self.tabBar.sendSubviewToBack(container)
 
-        // Pitch between items is itemWidth + itemSpacing; make five items span the whole capsule
+        // The system adds its own padding between items, so measure the real pitch
+        // and correct itemWidth until five items evenly fill the capsule with a small side margin
         let count = CGFloat(max(self.tabBar.items?.count ?? 1, 1))
         let spacing: CGFloat = 0
-        let itemWidth = (frame.width / count - spacing).rounded(.down)
+        let sideMargin: CGFloat = 8
+        let targetPitch = (frame.width - sideMargin * 2) / count
+        var itemWidth = self.tabBar.itemWidth > 0 ? self.tabBar.itemWidth : targetPitch.rounded(.down)
+        let sortedMids = colMids.sorted()
+        if sortedMids.count >= 2, let first = sortedMids.first, let last = sortedMids.last {
+            let actualPitch = (last - first) / CGFloat(sortedMids.count - 1)
+            if abs(actualPitch - targetPitch) > 1 {
+                itemWidth = max(20, (itemWidth + targetPitch - actualPitch).rounded(.down))
+            }
+        }
         if self.tabBar.itemWidth != itemWidth {
             self.tabBar.itemWidth = itemWidth
         }
