@@ -391,15 +391,42 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 indicator.frame = target
             }
             for icon in button.subviews where icon is UIImageView || String(describing: type(of: icon)).contains("ImageView") {
-                icon.transform = CGAffineTransform(scaleX: 0.7, y: 0.7)
-                UIView.animate(withDuration: 0.5, delay: 0, usingSpringWithDamping: 0.45, initialSpringVelocity: 0.8, options: [.allowUserInteraction]) {
-                    icon.transform = .identity
-                }
+                playIconAnimation(for: index, on: icon)
             }
         } else if changed || indicator.frame != target, indicator.layer.animationKeys()?.isEmpty ?? true {
             indicator.frame = target
         }
         floatingIndicatorIndex = index
+    }
+
+    // Per-tab icon animations: featured, changes, sources, packages, search
+    private func playIconAnimation(for index: Int, on icon: UIView) {
+        let layer = icon.layer
+        layer.removeAllAnimations()
+        func keyframes(_ keyPath: String, _ values: [CGFloat], _ duration: CFTimeInterval) {
+            let animation = CAKeyframeAnimation(keyPath: keyPath)
+            animation.values = values
+            animation.duration = duration
+            animation.timingFunctions = Array(repeating: CAMediaTimingFunction(name: .easeInEaseOut), count: max(values.count - 1, 1))
+            layer.add(animation, forKey: keyPath)
+        }
+        switch index {
+        case 0: // star: spin and pop
+            keyframes("transform.rotation.z", [0, CGFloat.pi * 2], 0.6)
+            keyframes("transform.scale", [1, 1.3, 1], 0.6)
+        case 1: // changes: wiggle
+            keyframes("transform.rotation.z", [0, -0.35, 0.3, -0.2, 0.1, 0], 0.55)
+        case 2: // globe: roll around
+            keyframes("transform.rotation.z", [0, CGFloat.pi * 2], 0.7)
+        case 3: // packages: drop and bounce
+            keyframes("transform.translation.y", [-14, 4, -5, 0], 0.55)
+            keyframes("transform.scale", [0.85, 1.1, 1], 0.55)
+        case 4: // search: sweep like looking around
+            keyframes("transform.rotation.z", [0, -0.5, 0.5, -0.25, 0], 0.6)
+            keyframes("transform.scale", [1, 1.2, 1], 0.6)
+        default:
+            keyframes("transform.scale", [1, 1.25, 1], 0.4)
+        }
     }
 
     private func applyFloatingStyle() {
