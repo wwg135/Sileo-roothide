@@ -269,7 +269,12 @@ final class SourcesViewController: SileoViewController {
                         self.promptImportRepos()
                     }
                     
-                    let menu = UIMenu(title: String(localizationKey: "Add_Source.Title"), children: [promptAddRepoAction, importReposAction])
+                    let removeBrokenAction = UIAction(title: String(localizationKey: "Remove_Broken_Sources"), image: .init(systemName: "wand.and.rays"), attributes: .destructive) { _ in
+                        self.removeBrokenSources()
+                    }
+                    let removeBrokenMenu = UIMenu(title: "", options: .displayInline, children: [removeBrokenAction])
+                    
+                    let menu = UIMenu(title: String(localizationKey: "Add_Source.Title"), children: [promptAddRepoAction, importReposAction, removeBrokenMenu])
                     nav.rightBarButtonItem = UIBarButtonItem(systemItem: .add, primaryAction: promptAddRepoAction, menu: menu)
                 } else {
                     nav.rightBarButtonItem = UIBarButtonItem(barButtonSystemItem: .add, target: self, action: #selector(self.presentAddRepoOptions))
@@ -352,11 +357,76 @@ final class SourcesViewController: SileoViewController {
         alert.addAction(UIAlertAction(title: String(localizationKey: "Import_Sources_File"), style: .default) { [weak self] _ in
             self?.promptImportRepos()
         })
+        alert.addAction(UIAlertAction(title: String(localizationKey: "Remove_Broken_Sources"), style: .destructive) { [weak self] _ in
+            self?.removeBrokenSources()
+        })
         alert.addAction(UIAlertAction(title: String(localizationKey: "Cancel"), style: .cancel))
         if let popover = alert.popoverPresentationController {
             popover.barButtonItem = navigationItem.rightBarButtonItem
         }
         present(alert, animated: true)
+    }
+    
+    // A source is broken when it is not being refreshed and no package list could be loaded from it
+    private func brokenRepos() -> [Repo] {
+        RepoManager.shared.repoList.filter { repo in
+            repo.packageDict.isEmpty
+                && !repo.packagesExist
+                && !repo.startedRefresh
+                && !updatingRepoList.contains { $0.rawURL == repo.rawURL }
+        }
+    }
+    
+    private func showSimpleAlert(title: String?, message: String?) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: String(localizationKey: "OK"), style: .cancel))
+        present(alert, animated: true)
+    }
+    
+    private func removeBrokenSources() {
+        let title = String(localizationKey: "Remove_Broken_Sources")
+        guard PackageListManager.shared.isLoaded, !inRefreshing, updatingRepoList.isEmpty else {
+            showSimpleAlert(title: title, message: String(localizationKey: "Broken_Sources_Refreshing"))
+            return
+        }
+        if DownloadManager.shared.queueRunning {
+            TabBarController.singleton?.presentPopupController()
+            return
+        }
+        
+        let broken = brokenRepos()
+        guard !broken.isEmpty else {
+            showSimpleAlert(title: title, message: String(localizationKey: "No_Broken_Sources"))
+            return
+        }
+        
+        let names = broken
+            .map { $0.repoName.isEmpty ? $0.displayURL : $0.repoName }
+            .sorted { $0.lowercased() < $1.lowercased() }
+        let message = String(localizationKey: "Remove_Broken_Sources.Message") + "\n\n" + names.joined(separator: "\n")
+        let alert = UIAlertController(title: String(localizationKey: "Remove_Broken_Sources.Title"), message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: String(localizationKey: "Cancel"), style: .cancel))
+        alert.addAction(UIAlertAction(title: String(localizationKey: "Remove_Broken_Sources.Confirm"), style: .destructive) { [weak self] _ in
+            self?.performRemoveBrokenSources(broken)
+        })
+        present(alert, animated: true)
+    }
+    
+    private func performRemoveBrokenSources(_ repos: [Repo]) {
+        // anything that started refreshing while the prompt was open is not broken anymore
+        let repos = repos.filter { repo in !repo.startedRefresh && !updatingRepoList.contains { $0.rawURL == repo.rawURL } }
+        guard !repos.isEmpty else { return }
+        
+        let removesPresented = repos.contains { $0.url == presentRepoUrl }
+        RepoManager.shared.remove(repos: repos)
+        reloadData()
+        updatingRepoList.removeAll { repo in repos.contains(repo) }
+        updateFooterCount()
+        NotificationCenter.default.post(name: PackageListManager.reloadNotification, object: nil)
+        if removesPresented {
+            presentDefaultPage()
+        }
+        showSimpleAlert(title: nil, message: String(localizationKey: "Broken_Sources_Removed"))
     }
     
     class SourcesPickerImporterDelegate: NSObject, UIDocumentPickerDelegate {

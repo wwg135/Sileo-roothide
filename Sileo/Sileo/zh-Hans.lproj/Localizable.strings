@@ -290,3 +290,10 @@
 "Conflict_Conflicts" = "冲突";
 "Conflict_Replaces" = "替换";
 "Floating_Tab_Bar" = "悬浮底栏";
+"Remove_Broken_Sources" = "移除损坏的插件源";
+"Remove_Broken_Sources.Title" = "移除损坏的插件源？";
+"Remove_Broken_Sources.Message" = "将移除无法载入的插件源。此操作不可撤销。";
+"Remove_Broken_Sources.Confirm" = "全部移除";
+"No_Broken_Sources" = "没有损坏的插件源";
+"Broken_Sources_Removed" = "已移除损坏的插件源";
+"Broken_Sources_Refreshing" = "插件源仍在载入或刷新中，请完成后再试。";

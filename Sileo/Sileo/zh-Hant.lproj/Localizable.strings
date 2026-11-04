@@ -293,3 +293,10 @@
 "Package_View_Info" = "檢視套件資訊";
 "Package_Downloading" = "正在下載…";
 "Floating_Tab_Bar" = "懸浮底欄";
+"Remove_Broken_Sources" = "移除損壞的來源";
+"Remove_Broken_Sources.Title" = "要移除損壞的來源嗎？";
+"Remove_Broken_Sources.Message" = "無法載入的來源將被移除。此動作無法復原。";
+"Remove_Broken_Sources.Confirm" = "全部移除";
+"No_Broken_Sources" = "沒有損壞的來源";
+"Broken_Sources_Removed" = "已移除損壞的來源";
+"Broken_Sources_Refreshing" = "來源仍在載入或重新整理中，請完成後再試。";
