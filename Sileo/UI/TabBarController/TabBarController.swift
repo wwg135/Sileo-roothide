@@ -315,7 +315,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     }
     
     private var floatingInset: CGFloat { 10 }
-    private var floatingPopupExtraOffset: CGFloat { 16 }
+    private var floatingPopupExtraOffset: CGFloat { 32 }
     private var floatingRetryCount = 0
     private var floatingBackground: UIView?
     private var floatingAppearance: UITabBarAppearance?
