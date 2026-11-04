@@ -66,6 +66,8 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     }
 
     func tabBarController(_ tabBarController: UITabBarController, didSelect viewController: UIViewController) {
+        // Run after the tab bar relayout, otherwise the system may rebuild the icon view and drop the animation
+        DispatchQueue.main.async { [weak self] in self?.animateSelectedIcon() }
         if shouldSelectIndex == tabBarController.selectedIndex {
             if let splitViewController = viewController as? UISplitViewController {
                 if let navController = splitViewController.viewControllers[0] as? UINavigationController {
@@ -369,8 +371,10 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             if #available(iOS 26.0, *) {
                 indicator.effect = UIGlassEffect()
             } else {
-                indicator.effect = UIBlurEffect(style: .systemThinMaterial)
-                indicator.backgroundColor = UIColor.white.withAlphaComponent(0.25)
+                indicator.effect = UIBlurEffect(style: .systemUltraThinMaterial)
+                indicator.backgroundColor = UIColor { $0.userInterfaceStyle == .dark ? UIColor.white.withAlphaComponent(0.12) : UIColor.black.withAlphaComponent(0.06) }
+                indicator.layer.borderWidth = 0.5
+                indicator.layer.borderColor = UIColor.white.withAlphaComponent(0.7).cgColor
             }
             indicator.clipsToBounds = true
             indicator.layer.cornerCurve = .continuous
@@ -381,8 +385,8 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         indicator.isHidden = false
         let button = sorted[index]
         let rect = container.convert(button.bounds, from: button)
-        let height = container.bounds.height - 12
-        let width = min(rect.width - 4, height + 14)
+        let height = container.bounds.height - 10
+        let width = rect.width + 8
         let target = CGRect(x: rect.midX - width / 2, y: (container.bounds.height - height) / 2, width: width, height: height)
         indicator.layer.cornerRadius = height / 2
         let changed = floatingIndicatorIndex != index
@@ -390,13 +394,47 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             UIView.animate(withDuration: 0.45, delay: 0, usingSpringWithDamping: 0.72, initialSpringVelocity: 0.6, options: [.allowUserInteraction, .beginFromCurrentState]) {
                 indicator.frame = target
             }
-            for icon in button.subviews where icon is UIImageView || String(describing: type(of: icon)).contains("ImageView") {
-                playIconAnimation(for: index, on: icon)
-            }
         } else if changed || indicator.frame != target, indicator.layer.animationKeys()?.isEmpty ?? true {
             indicator.frame = target
         }
         floatingIndicatorIndex = index
+    }
+
+    // Icon image view of a tab button, ignoring badge views (items with badges nest their views differently)
+    private func iconImageView(in view: UIView) -> UIImageView? {
+        var best: UIImageView?
+        func walk(_ v: UIView) {
+            for sub in v.subviews {
+                if String(describing: type(of: sub)).contains("Badge") { continue }
+                if let imageView = sub as? UIImageView, imageView.bounds.width > 12 {
+                    if best == nil || imageView.bounds.width * imageView.bounds.height > best!.bounds.width * best!.bounds.height {
+                        best = imageView
+                    }
+                }
+                walk(sub)
+            }
+        }
+        walk(view)
+        return best
+    }
+
+    private func buttonsSortedByX() -> [UIView] {
+        var result: [UIView] = []
+        func walk(_ v: UIView) {
+            for sub in v.subviews {
+                if String(describing: type(of: sub)).contains("TabBarButton") { result.append(sub) } else { walk(sub) }
+            }
+        }
+        walk(self.tabBar)
+        return result.sorted { $0.frame.midX < $1.frame.midX }
+    }
+
+    private func animateSelectedIcon() {
+        guard isFloatingEnabled else { return }
+        let buttons = buttonsSortedByX()
+        let index = self.selectedIndex
+        guard index < buttons.count, let icon = iconImageView(in: buttons[index]) else { return }
+        playIconAnimation(for: index, on: icon)
     }
 
     // Per-tab icon animations: featured, changes, sources, packages, search
