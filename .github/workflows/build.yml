@@ -104,8 +104,6 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p website/debs
-          # keep only the newest Sileo build in the repo
-          rm -f website/debs/org.coolstar.sileo_*.deb
           cp debs/*.deb website/debs/
           ls -la website/debs/ | grep -i sileo
 
