@@ -314,7 +314,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         return tabBarFrame
     }
     
-    private var floatingInset: CGFloat { 12 }
+    private var floatingInset: CGFloat { 28 }
     private var floatingRetryCount = 0
     private var floatingBackground: UIView?
     private var originalStandardAppearance: UITabBarAppearance?
@@ -403,7 +403,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
 
         // Pitch between items is itemWidth + itemSpacing; make five items span the whole capsule
         let count = CGFloat(max(self.tabBar.items?.count ?? 1, 1))
-        let spacing: CGFloat = 1
+        let spacing: CGFloat = 0
         let itemWidth = (frame.width / count - spacing).rounded(.down)
         if self.tabBar.itemWidth != itemWidth {
             self.tabBar.itemWidth = itemWidth
