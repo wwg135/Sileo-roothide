@@ -13,9 +13,6 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     static var singleton: TabBarController?
     private var downloadsController: UINavigationController?
     private(set) public var popupIsPresented = false
-    // makes the next popup bar presentation open the popup in the same animation
-    var openPopupOnPresent = false
-    private var isPresentingOpenPopup = false
     private var popupLock = DispatchSemaphore(value: 1)
     private var shouldSelectIndex = -1
     private static let lastSelectedTabKey = "LastSelectedTab"
@@ -140,9 +137,6 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         }
         
         popupIsPresented = true
-        let openPopup = openPopupOnPresent
-        openPopupOnPresent = false
-        isPresentingOpenPopup = openPopup
         self.popupContentView.popupCloseButtonAutomaticallyUnobstructsTopBars = false
         self.popupBar.toolbar.tag = WHITE_BLUR_TAG
         self.popupBar.barStyle = .prominent
@@ -161,8 +155,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         TabBarController.popupQueue.async {
             self.popupQueueLock.wait()
             DispatchQueue.main.async {
-                self.presentPopupBar(withContentViewController: downloadsController, openPopup: openPopup, animated: animated) {
-                    self.isPresentingOpenPopup = false
+                self.presentPopupBar(withContentViewController: downloadsController, animated: animated) {
                     completion?()
                     self.popupQueueLock.signal()
                 }
@@ -211,7 +204,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     func presentPopupController(completion: (() -> Void)?) {
         NSLog("SileoLog: TabBarController.presentPopupController \(completion)")
 
-        guard popupIsPresented, !isPresentingOpenPopup else {
+        guard popupIsPresented else {
             if let completion = completion {
                 completion()
             }

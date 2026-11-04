@@ -63,10 +63,6 @@ final class DownloadManager {
     public var aptRunning = false
     public var aptFinished = false
     public var queueRunning = false
-    // identifier of an externally opened deb that should be installed without the queue confirmation when safe
-    public var autoInstallIdentifier: String?
-    // the auto-installed package is still being converted in the queue; the result has to be re-checked afterwards
-    private var autoInstallConverting = false
     public var totalProgress = CGFloat(0)
     
 //    private static let dataQueueContext = 50
@@ -146,12 +142,6 @@ final class DownloadManager {
         NSLog("SileoLog: startPackageDownload \(download.package.package)")
         
         let package = download.package
-        
-        // A local rootless/rootful deb is converted in place of being downloaded
-        if let localDeb = package.local_deb, DownloadManager.needsConversion(package) {
-            self.convertDownloaded(download: download, fileURL: URL(fileURLWithPath: localDeb), removeSource: false)
-            return
-        }
         
         // If it's a local file we can verify it immediately
         if package.local_deb != nil {
@@ -310,9 +300,10 @@ final class DownloadManager {
     
     private static let incompatibleHosts = ["apt.procurs.us", "ellekit.space"]
     
-    // A rootless/rootful package that is queued as is and converted once it has been downloaded (or, for a local deb, when the queue starts)
+    // A rootless/rootful repo package that is queued as is and converted once it has been downloaded
     static func needsConversion(_ package: Package) -> Bool {
-        guard !checkRootHide(package),
+        guard package.local_deb == nil,
+              !checkRootHide(package),
               UserDefaults.standard.bool(forKey: compatModeKey, fallback: true),
               !incompatibleHosts.contains(package.sourceRepo?.url?.host ?? "")
         else { return false }
@@ -320,7 +311,7 @@ final class DownloadManager {
     }
     
     // running in aptQueue; the download keeps its slot until the conversion has finished
-    private func convertDownloaded(download: Download, fileURL: URL, removeSource: Bool = true) {
+    private func convertDownloaded(download: Download, fileURL: URL) {
         let package = download.package
         download.success = false
         download.progress = 0.99
@@ -343,9 +334,7 @@ final class DownloadManager {
                 NSLog("SileoLog: convertDownloaded failed \(error)")
                 failure = error.localizedDescription
             }
-            if removeSource {
-                try? FileManager.default.removeItem(at: fileURL)
-            }
+            try? FileManager.default.removeItem(at: fileURL)
             
             DownloadManager.aptQueue.async {
                 self.finishConversion(download: download, original: package, converted: converted, failure: failure, output: output)
@@ -355,8 +344,6 @@ final class DownloadManager {
     
     private func finishConversion(download: Download, original: Package, converted: Package?, failure: String?, output: URL) {
         download.message = nil
-        let autoInstall = autoInstallConverting
-        autoInstallConverting = false
         
         guard download.session == self.currentDownloadSession else {
             try? FileManager.default.removeItem(at: output)
@@ -400,15 +387,6 @@ final class DownloadManager {
         } catch {
             fail(error.localizedDescription)
             DispatchQueue.main.async { self.viewController.reloadData() }
-            return
-        }
-        
-        // dependencies resolved only now may need the user's review, so go back to the queue instead of installing
-        if autoInstall && (!self.vars.errors.isEmpty || !self.vars.uninstallations.isEmpty || !self.vars.uninstalldeps.isEmpty || !self.vars.upgrades.isEmpty) {
-            DispatchQueue.main.async {
-                self.viewController.cancelDownload(nil)
-                TabBarController.singleton?.presentPopupController()
-            }
             return
         }
         
@@ -790,45 +768,10 @@ final class DownloadManager {
             
             DispatchQueue.main.async {
                 self.viewController.reloadData()
-                if self.consumeAutoInstall() {
-                    // start right away and open the install window directly, without showing the queue bar first
-                    if let tabBar = TabBarController.singleton, !tabBar.popupIsPresented {
-                        tabBar.openPopupOnPresent = true
-                        self.viewController.confirmQueued(nil)
-                        if tabBar.openPopupOnPresent {
-                            tabBar.presentPopup()
-                        }
-                    } else {
-                        self.viewController.confirmQueued(nil)
-                        TabBarController.singleton?.presentPopupController()
-                    }
-                    completion?()
-                } else {
-                    TabBarController.singleton?.updatePopup(completion: completion)
-                }
+                TabBarController.singleton?.updatePopup(completion: completion)
                 NotificationCenter.default.post(name: PackageListManager.stateChange, object: nil)
             }
         }
-    }
-    
-    // one-shot: an external deb is installed right away only when nothing needs the user's review
-    private func consumeAutoInstall() -> Bool {
-        guard let identifier = autoInstallIdentifier else { return false }
-        autoInstallIdentifier = nil
-        
-        let vars = self.vars
-        guard !queueRunning,
-              vars.errors.isEmpty,
-              vars.upgrades.isEmpty,
-              vars.uninstallations.isEmpty,
-              vars.uninstalldeps.isEmpty,
-              vars.installations.count == 1,
-              vars.installations.raw.contains(where: { $0.package.package == identifier && $0.package.local_deb != nil })
-        else { return false }
-        
-        NSLog("SileoLog: auto install \(identifier)")
-        autoInstallConverting = vars.installations.raw.contains(where: { DownloadManager.needsConversion($0.package) })
-        return true
     }
     
     public func findDownloadPackage(package: Package) -> DownloadPackage? {
@@ -993,7 +936,6 @@ final class DownloadManager {
     }
     
     private func showConvertFailure(package: Package, message: String) {
-        autoInstallIdentifier = nil
         let alert = UIAlertController(title: String(localizationKey: "Compat_Convert_Failed"), message: "\(package.package)(\(package.version))\n\n\(message)", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: String(localizationKey: "OK"), style: .cancel))
         SileoAppDelegate.presentController(alert)
@@ -1170,7 +1112,6 @@ final class DownloadManager {
                         return
                     }
                     
-                    self.autoInstallIdentifier = nil
                     let title = String(localizationKey: "Not_Supported")
                     let msg: String
                     if IncompatibleRepo {
