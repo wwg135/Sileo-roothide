@@ -63,6 +63,8 @@ final class DownloadManager {
     public var aptRunning = false
     public var aptFinished = false
     public var queueRunning = false
+    // identifier of an externally opened deb that should be installed without the queue confirmation when safe
+    public var autoInstallIdentifier: String?
     public var totalProgress = CGFloat(0)
     
 //    private static let dataQueueContext = 50
@@ -770,8 +772,29 @@ final class DownloadManager {
                 self.viewController.reloadData()
                 TabBarController.singleton?.updatePopup(completion: completion)
                 NotificationCenter.default.post(name: PackageListManager.stateChange, object: nil)
+                self.autoInstallIfSafe()
             }
         }
+    }
+    
+    // one-shot: an external deb is installed right away only when nothing needs the user's review
+    private func autoInstallIfSafe() {
+        guard let identifier = autoInstallIdentifier else { return }
+        autoInstallIdentifier = nil
+        
+        let vars = self.vars
+        guard !queueRunning,
+              vars.errors.isEmpty,
+              vars.upgrades.isEmpty,
+              vars.uninstallations.isEmpty,
+              vars.uninstalldeps.isEmpty,
+              vars.installations.count == 1,
+              vars.installations.raw.contains(where: { $0.package.package == identifier && $0.package.local_deb != nil })
+        else { return }
+        
+        NSLog("SileoLog: auto install \(identifier)")
+        viewController.confirmQueued(nil)
+        TabBarController.singleton?.presentPopupController()
     }
     
     public func findDownloadPackage(package: Package) -> DownloadPackage? {
@@ -936,6 +959,7 @@ final class DownloadManager {
     }
     
     private func showConvertFailure(package: Package, message: String) {
+        autoInstallIdentifier = nil
         let alert = UIAlertController(title: String(localizationKey: "Compat_Convert_Failed"), message: "\(package.package)(\(package.version))\n\n\(message)", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: String(localizationKey: "OK"), style: .cancel))
         SileoAppDelegate.presentController(alert)
@@ -1112,6 +1136,7 @@ final class DownloadManager {
                         return
                     }
                     
+                    self.autoInstallIdentifier = nil
                     let title = String(localizationKey: "Not_Supported")
                     let msg: String
                     if IncompatibleRepo {

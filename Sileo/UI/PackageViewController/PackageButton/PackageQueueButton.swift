@@ -506,6 +506,9 @@ class PackageQueueButton: PackageButton {
     private func queuePackage(_ package: Package, _ queue: DownloadManagerQueue)
     {
         if DownloadManager.shared.queueRunning { return }
+        if queue == .installations && package.local_deb != nil && package.sourceRepo == nil {
+            DownloadManager.shared.autoInstallIdentifier = package.package
+        }
         DownloadManager.shared.add(package: package, queue: queue) {
             DownloadManager.shared.reloadData(recheckPackages: true)
         }
