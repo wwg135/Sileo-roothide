@@ -321,6 +321,13 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     private var floatingAppearance: UITabBarAppearance?
     private var floatingItemWidth: CGFloat = 0
     private var floatingRefreshPending = false
+    private var floatingSettled = false
+
+    private func revealFloatingTabBar() {
+        floatingSettled = true
+        guard self.tabBar.alpha < 1 else { return }
+        UIView.animate(withDuration: 0.2) { self.tabBar.alpha = 1 }
+    }
     private var originalStandardAppearance: UITabBarAppearance?
     private var originalScrollEdgeAppearance: UITabBarAppearance?
 
@@ -344,6 +351,8 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 floatingAppearance = nil
                 floatingItemWidth = 0
                 floatingRefreshPending = false
+                floatingSettled = false
+                self.tabBar.alpha = 1
                 self.tabBar._blurEnabled = true
                 self.tabBar.standardAppearance = originalStandardAppearance ?? UITabBarAppearance()
                 self.tabBar.scrollEdgeAppearance = originalScrollEdgeAppearance
@@ -360,6 +369,12 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             self.tabBar.standardAppearance = appearance
             self.tabBar.scrollEdgeAppearance = appearance
             floatingAppearance = appearance
+            // Hide until item metrics have been corrected, to avoid a visible shrink on launch
+            floatingSettled = false
+            self.tabBar.alpha = 0
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                if let self = self, self.isFloatingEnabled { self.revealFloatingTabBar() }
+            }
             self.tabBar._blurEnabled = false
 
             let container = UIView()
@@ -426,7 +441,9 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         let sortedMids = colMids.sorted()
         if sortedMids.count >= 2, let first = sortedMids.first, let last = sortedMids.last {
             let actualPitch = (last - first) / CGFloat(sortedMids.count - 1)
-            if abs(actualPitch - targetPitch) > 1 {
+            if abs(actualPitch - targetPitch) <= 1 {
+                revealFloatingTabBar()
+            } else {
                 itemWidth = max(20, (itemWidth + targetPitch - actualPitch).rounded(.down))
             }
         }
