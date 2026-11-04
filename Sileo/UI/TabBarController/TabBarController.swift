@@ -322,9 +322,11 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
     private var floatingItemWidth: CGFloat = 0
     private var floatingRefreshPending = false
     private var floatingSettled = false
+    private let floatingItemWidthKey = "FloatingTabBarCalibratedItemWidth"
 
-    private func revealFloatingTabBar() {
+    private func revealFloatingTabBar(save: Bool = true) {
         floatingSettled = true
+        if save, floatingItemWidth > 0 { UserDefaults.standard.set(Double(floatingItemWidth), forKey: floatingItemWidthKey) }
         guard self.tabBar.alpha < 1 else { return }
         UIView.animate(withDuration: 0.2) { self.tabBar.alpha = 1 }
     }
@@ -352,6 +354,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
                 floatingItemWidth = 0
                 floatingRefreshPending = false
                 floatingSettled = false
+                UserDefaults.standard.removeObject(forKey: floatingItemWidthKey)
                 self.tabBar.alpha = 1
                 self.tabBar._blurEnabled = true
                 self.tabBar.standardAppearance = originalStandardAppearance ?? UITabBarAppearance()
@@ -369,13 +372,24 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             self.tabBar.standardAppearance = appearance
             self.tabBar.scrollEdgeAppearance = appearance
             floatingAppearance = appearance
-            // Hide until item metrics have been corrected, to avoid a visible shrink on launch
-            floatingSettled = false
-            self.tabBar.alpha = 0
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-                if let self = self, self.isFloatingEnabled { self.revealFloatingTabBar() }
+            let cached = CGFloat(UserDefaults.standard.double(forKey: floatingItemWidthKey))
+            if cached > 0 {
+                // Reuse the saved calibration so the bar appears in its final layout immediately
+                floatingItemWidth = cached
+                appearance.stackedItemPositioning = .centered
+                appearance.stackedItemWidth = cached
+                appearance.stackedItemSpacing = 0
+                self.tabBar.standardAppearance = appearance
+                self.tabBar.scrollEdgeAppearance = appearance
+                floatingSettled = true
+            } else {
+                // Hide until item metrics have been corrected, to avoid a visible shrink
+                floatingSettled = false
+                self.tabBar.alpha = 0
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                    if let self = self, self.isFloatingEnabled { self.revealFloatingTabBar(save: false) }
+                }
             }
-            self.tabBar._blurEnabled = false
 
             let container = UIView()
             container.isUserInteractionEnabled = false
