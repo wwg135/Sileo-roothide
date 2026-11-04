@@ -439,13 +439,11 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
             appearance.stackedItemSpacing = spacing
             self.tabBar.standardAppearance = appearance
             self.tabBar.scrollEdgeAppearance = appearance
-            // UITabBar only re-reads stacked item metrics on a selection change, so force one
+            // UITabBar only re-reads stacked item metrics on a selection change, so re-select the current tab (tabBar.selectedItem must not be touched directly)
             floatingRefreshPending = true
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
-                let selected = self.tabBar.selectedItem
-                self.tabBar.selectedItem = nil
-                self.tabBar.selectedItem = selected
+                self.selectedIndex = self.selectedIndex
                 self.tabBar.setNeedsLayout()
                 self.tabBar.layoutIfNeeded()
                 self.floatingRefreshPending = false
