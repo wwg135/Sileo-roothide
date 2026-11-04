@@ -47,10 +47,12 @@ enum RootlessConverter {
         "choicy", "com.tigisoftware.filza", "sileo", "zebra", "com.opa334.ccsupport", "ws.hbang.common",
         "libsandy", "preferenceloader", "newterm3", "altlist"
     ]
-    private static let notTweaks = ["ellekit", "oldabi"]
+    // patch.sh tests these with a quoted `[[ {a,b} =~ "$x" ]]`, which is a substring match on the literal list
+    private static let notTweaks = "{ellekit,oldabi}"
+    private static let skippedExtensions = "{png,strings}"
+    private static let maintainerScripts = "{preinst,prerm,postinst,postrm,extrainst_}"
     private static let compatLayer = "rootless-compat(>= 0.9)"
     private static let mirrorRelativePath = "var/mobile/Library/pkgmirror"
-    private static let maintainerScripts: Set<String> = ["preinst", "prerm", "postinst", "postrm", "extrainst_"]
     private static let excludedSuffixes = [".png", ".gif", ".jpg", ".jpeg", ".svg", ".strings", ".js", ".py", ".h", ".json", ".txt", ".xml"]
     private static let entitlements = """
     <?xml version="1.0" encoding="UTF-8"?>
@@ -77,7 +79,7 @@ enum RootlessConverter {
     }
 
     private static func isConvertible(identifier: String, maintainer: String?) -> Bool {
-        if notTweaks.contains(identifier) || maintainer == "Procursus Team <support@procurs.us>" {
+        if identifier.isEmpty || notTweaks.contains(identifier) || maintainer == "Procursus Team <support@procurs.us>" {
             return false
         }
         return !incompatiblePackages.contains { identifier.contains($0) }
@@ -175,6 +177,10 @@ enum RootlessConverter {
             } else if mode == .rootless {
                 patchText(at: full, relative: relative, name: name)
             }
+        }
+
+        if mode == .rootless {
+            mirrorPatchLinks(in: root, identifier: identifier)
         }
 
         let newControl = convertControl(control, mode: mode)
@@ -431,9 +437,25 @@ enum RootlessConverter {
         }
     }
 
+    /// patch.sh copies the `.roothidepatch` links of DEBIAN's binaries next to the mirrored DEBIAN.
+    private static func mirrorPatchLinks(in root: URL, identifier: String) {
+        let fm = FileManager.default
+        let debian = root.appendingPathComponent("DEBIAN").path
+        let mirrored = root.appendingPathComponent(mirrorRelativePath + "/DEBIAN." + identifier).path
+        guard let items = try? fm.contentsOfDirectory(atPath: debian) else { return }
+        for item in items where item.hasSuffix(".roothidepatch") {
+            guard let destination = try? fm.destinationOfSymbolicLink(atPath: debian + "/" + item) else { continue }
+            let link = mirrored + "/" + item
+            try? fm.removeItem(atPath: link)
+            try? fm.createSymbolicLink(atPath: link, withDestinationPath: destination)
+        }
+    }
+
     private static func patchText(at path: String, relative: String, name: String) {
         let url = URL(fileURLWithPath: path)
-        let ext = (name as NSString).pathExtension
+        // ${name##*.}: the whole name when it has no dot
+        let ext = name.split(separator: ".", maxSplits: Int.max, omittingEmptySubsequences: false).last.map(String.init) ?? name
+        if skippedExtensions.contains(ext) || ext.isEmpty { return }
         if maintainerScripts.contains(name), let data = try? Data(contentsOf: url) {
             // keep the file's own encoding so that no byte changes by the round trip
             let encoding: String.Encoding = String(data: data, encoding: .utf8) != nil ? .utf8 : .isoLatin1
