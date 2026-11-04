@@ -407,7 +407,7 @@ class TabBarController: UITabBarController, UITabBarControllerDelegate {
         // and correct itemWidth until five items evenly fill the capsule with a small side margin
         let count = CGFloat(max(self.tabBar.items?.count ?? 1, 1))
         let spacing: CGFloat = 0
-        let sideMargin: CGFloat = 8
+        let sideMargin: CGFloat = 12
         let targetPitch = (frame.width - sideMargin * 2) / count
         var itemWidth = self.tabBar.itemWidth > 0 ? self.tabBar.itemWidth : targetPitch.rounded(.down)
         let sortedMids = colMids.sorted()
